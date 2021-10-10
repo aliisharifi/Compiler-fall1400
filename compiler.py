@@ -26,7 +26,6 @@ after_id_acc = [i for i in '()[]{}']
 after_id_acc += whitespace
 
 table = {}
-f = open('input.txt', 'r')
 lineCount = 1
 state = ""
 tokens = {}
@@ -35,8 +34,9 @@ symbolTable = {}
 keywords = []
 openComment = False
 startComment = -1
-getNextToken = False
+getNextToken = True
 
+f = open('input.txt', 'r')
 inputLine = f.read()
 
 # tempError = []
