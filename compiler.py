@@ -1,20 +1,27 @@
-def addToken(token, lexeme, line):
+def addToken(token, lexeme_temp, line):
     if line not in tokens:
         tokens.update({line: []})
-    tokens[line].append((token, lexeme))
+    tokens[line].append((token, lexeme_temp))
 
 
-def addError(lexeme, error, line):
+def addError(lexeme_temp, error, line):
     if line not in errors:
         errors.update({line: []})
-    errors[line].append((lexeme, error))
+    errors[line].append((lexeme_temp, error))
 
 
-def addSymbolTable(lexeme):
-    symbolTable.update({len(symbolTable) + 1: lexeme})
+def addSymbolTable(lexeme_temp):
+    symbolTable.update({len(symbolTable) + 1: lexeme_temp})
 
-#Define different sets of characters
 
+def initSymbolTable():
+    for x in keywords:
+        symbolTable.update({len(symbolTable) + 1: x})
+
+
+# Todo
+################
+"""
 letter = [chr(i) for i in range(ord('a'), ord('z') + 1)]
 letter = letter + [chr(i) for i in range(ord('A'), ord('Z') + 1)]
 
@@ -24,17 +31,21 @@ whitespace = [i for i in '\n\t\f\r \v']
 
 after_id_acc = [i for i in '()[]{}']
 after_id_acc += whitespace
-
+"""
 table = {}
+################
+
 lineCount = 1
 state = ""
 tokens = {}
 errors = {}
 symbolTable = {}
-keywords = []
+keywords = ["if", "else", "void", "int", "repeat", "break", "until", "return"]
 openComment = False
 startComment = -1
 getNextToken = True
+
+initSymbolTable()
 
 f = open('input.txt', 'r')
 inputLine = f.read()
@@ -43,7 +54,7 @@ inputLine = f.read()
 # tempToken = []
 i = 0
 
-while getNextToken and inputLine[i] != '':
+while getNextToken and i <= len(inputLine):
     lexeme = ""
     state = "start"
     while True:
@@ -111,4 +122,3 @@ while getNextToken and inputLine[i] != '':
             break
 
     i += 1
-
