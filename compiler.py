@@ -58,7 +58,10 @@ while getNextToken and i <= len(inputLine):
     lexeme = ""
     state = "start"
     while True:
-        state = (table[state])[inputLine[i]]
+        if inputLine[i] in table[state]:
+            state = (table[state])[inputLine[i]]
+        else:
+            state = (table[state])["other"]
         lexeme += inputLine[i]
         flag = 0
         if state == "ID_KEY_ACC_*":
