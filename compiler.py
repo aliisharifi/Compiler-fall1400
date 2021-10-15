@@ -11,12 +11,13 @@ def addError(lexeme_temp, error, line):
 
 
 def addSymbolTable(lexeme_temp):
-    symbolTable.update({len(symbolTable) + 1: lexeme_temp})
+    if not lexeme_temp in symbolTable:
+        symbolTable.update({lexeme_temp: len(symbolTable) + 1})
 
 
 def initSymbolTable():
     for x in keywords:
-        symbolTable.update({len(symbolTable) + 1: x})
+        symbolTable.update({x: len(symbolTable) + 1})
 
 
 # Todo
@@ -38,74 +39,119 @@ table = {}
 digit = [i for i in '0123456789']
 lowercase_letters = {chr(i) for i in range(ord('a'), ord('z') + 1)}
 uppercase_letters = {i.upper() for i in lowercase_letters}
-letter = lowercase_letters + uppercase_letters
-after_id_acc = {' ', '=', '<'} # TODO complete
-after_num_acc = {} # TODO complete
-symbol_except_eq = {i for i in ';:,[]()+-*<'}
+letter = lowercase_letters.union(uppercase_letters)
 whitespace = {i for i in ' \n\r\t\v\f'}
-alphabet = {chr(i) for i in range(32, 127)} + whitespace + ''  # all printable ASCIIs
+symbol_except_eq = {i for i in ';:,[]()+-*<{}'}
 
-#TODO defining others!
-start_other = {}
-ID_KEY_other = {}
-NUM_other = {}
+#TODO
+after_id_acc = {' ', '=', '<', '(', ')', '{', '}', '[', ']', ';', ':', '+', '-', '*'}  # TODO complete
+after_id_acc = after_id_acc.union(whitespace)
+after_num_acc = {' ', '=', '<', '(', ')', '{', '}', '[', ']', ';', ':', '+', '-', '*'}  # TODO complete
+after_num_acc = after_num_acc.union(whitespace)
+after_eq_acc = {'('}
+after_eq_acc = after_eq_acc.union(whitespace).union(letter).union(digit)
 
+#alphabet = {chr(i) for i in range(32, 127)} + whitespace + ''  # all printable ASCIIs
+# TODO defining others!
+#start_other = {}
+#ID_KEY_other = {}
+#NUM_other = {}
 
-#initializing table
-table.update('start') = {}
+# initializing table
+table.update({'start': {}})
+
+table.update({'ID_KEY': {}})
+table.update({'ID_KEY_ACC_*': {}})
+
+table.update({'invalid_input': {}})
+table.update({'invalid_input_*': {}})
+table.update({'invalid_number': {}})
+table.update({'unmatched_comment': {}})
+table.update({'unclosed_comment': {}})
+
+table.update({'NUM': {}})
+table.update({'NUM_ACC_*': {}})
+
+table.update({'symbol_1': {}})
+table.update({'symbol_2': {}})
+table.update({'symbol_3': {}})
+table.update({'symbol_4_*': {}})
+
+table.update({'COM_1': {}})
+table.update({'COM_2': {}})
+table.update({'COM_3': {}})
+table.update({'COM_4': {}})
+table.update({'COM_1_ACC': {}})
+table.update({'COM_2_ACC': {}})
+
+table.update({'whitespace': {}})
+
+table.update({'V': {}})
+
 for i in letter:
-    table['start'].update(i) = 'ID_KEY'
+    table['start'].update({i: 'ID_KEY'})
 for i in digit:
-    table['start'].update(i) = 'NUM'
+    table['start'].update({i: 'NUM'})
 for i in symbol_except_eq:
-    table['start'].update(i) = 'symbol_1'
-table['start'].update('=') = 'symbol2'
-table['start'].update('/') = 'COM_1'
+    table['start'].update({i: 'symbol_1'})
+table['start'].update({'=': 'symbol_2'})
+table['start'].update({'/': 'COM_1'})
 for i in whitespace:
-    table['start'].update(i) = 'whitespace'
-table['start'].update('*') ='v' #TODO Check V?
+    table['start'].update({i: 'whitespace'})
+table['start'].update({'*': 'V'})  # TODO Check V?
+table['start'].update({'other': 'invalid_input'})
 
-for i in letter + digit:
-    table['ID_KEY'].update(i) = 'ID_KEY'
+for i in letter.union(digit):
+    table['ID_KEY'].update({i: 'ID_KEY'})
 for i in after_id_acc:
-    table['ID_KEY'].update(i) = 'ID_KEY_ACC_*'
-for i in ID_KEY_other:
-    table['ID_KEY'].update(i) = 'invalid_input'
+    table['ID_KEY'].update({i: 'ID_KEY_ACC_*'})
+table['ID_KEY'].update({'other': 'invalid_input'})
+# for i in ID_KEY_other:
+#    table['ID_KEY'].update({i: 'invalid_input'})
 
 for i in digit:
-    table['NUM'].update(i) = 'NUM'
+    table['NUM'].update({i: 'NUM'})
 for i in after_num_acc:
-    table['NUM'].update(i) = 'NUM_ACC_*'
-for i in NUM_other:
-    table['NUM'].update(i) = 'invalid_number'
+    table['NUM'].update({i: 'NUM_ACC_*'})
+table['NUM'].update({'other': 'invalid_number'})
+# for i in NUM_other:
+#    table['NUM'].update({i: 'invalid_number'})
 
-table['symbol_2'].update('=') = 'symbol_3'
-for i in alphabet - {'='}:
-    table['symbol_2'].update(i) = 'symbol_4_*'
+for i in after_eq_acc:
+    table['symbol_2'].update({i: 'symbol_4_*'})
+table['symbol_2'].update({'=': 'symbol_3'})
+table['symbol_2'].update({'other': 'invalid_input'})
+# for i in alphabet - {'='}:
+#    table['symbol_2'].update({i: 'symbol_4_*'})
 
-for i in alphabet - {'/', '*'}:
-    table['COM_1'].update(i) = 'invalid_input_*'
-table['COM_1'].update('*') = 'COM_2'
-table['COM_1'].update('/') = 'COM_4'
+# for i in alphabet - {'/', '*'}:
+#    table['COM_1'].update({i: 'invalid_input_*'})
+table['COM_1'].update({'*': 'COM_2'})
+table['COM_1'].update({'/': 'COM_4'})
+table['COM_1'].update({'other': 'invalid_input_*'})
 
-for i in alphabet - {'', '*'}:
-    table['COM_2'].update(i) = 'COM_2'
-table['COM_2'].update('') = 'unclosed_comment'
-table['COM_2'].update('*') = 'COM_3'
+# for i in alphabet - {'', '*'}:
+#    table['COM_2'].update({i: 'COM_2'})
+table['COM_2'].update({'other': 'COM_2'})
+table['COM_2'].update({'': 'unclosed_comment'})
+table['COM_2'].update({'*': 'COM_3'})
 
-for i in alphabet - {'', '\n'}:
-    table['COM_4'].update('i') = 'COM_4'
-table['COM_4'].update('') = 'COM_2_ACC'
-table['COM_4'].update('\n') = 'COM_2_ACC'
+# for i in alphabet - {'', '\n'}:
+#    table['COM_4'].update({i: 'COM_4'})
+table['COM_4'].update({'other': 'COM_4'})
+table['COM_4'].update({'': 'COM_2_ACC'})
+table['COM_4'].update({'\n': 'COM_2_ACC'})
 
-for i in alphabet - {'', '/'}:
-    table['COM_3'].update(i) = 'COM_2'
-table['COM_3'].update('') = 'unclosed_comment'
-table['COM_3'].update('/') = 'COM_2_ACC'
+# for i in alphabet - {'', '/'}:
+#    table['COM_3'].update({i: 'COM_2'})
+table['COM_3'].update({'other': 'COM_2'})
+table['COM_3'].update({'': 'unclosed_comment'})
+table['COM_3'].update({'/': 'COM_1_ACC'})
 
-for i in alphabet - {'/'}:
-    table['V'].update(i) = 'invalid_input_*'
-table['/'].update('/') = 'unmatched_comment'
+# for i in alphabet - {'/'}:
+#    table['V'].update({i: 'invalid_input_*'})
+table['V'].update({'other': 'invalid_input_*'})
+table['V'].update({'/': 'unmatched_comment'})
 #################
 
 lineCount = 1
@@ -127,7 +173,7 @@ inputLine = f.read()
 # tempToken = []
 i = 0
 
-while getNextToken and i <= len(inputLine):
+while getNextToken and i < len(inputLine):
     lexeme = ""
     state = "start"
     while True:
@@ -135,6 +181,7 @@ while getNextToken and i <= len(inputLine):
             state = (table[state])[inputLine[i]]
         else:
             state = (table[state])["other"]
+        print(state)
         lexeme += inputLine[i]
         flag = 0
         if state == "ID_KEY_ACC_*":
@@ -194,7 +241,39 @@ while getNextToken and i <= len(inputLine):
                     startComment = lineCount
                 openComment = True
 
+        i += 1
+
         if flag == 0:
             break
 
-    i += 1
+tokenTxt = ""
+for i in tokens:
+    tokenTxt += str(i).strip('"\'') + ".	"
+    for x in tokens[i]:
+        tokenTxt += str(x).strip('"\'') + " "
+    tokenTxt += "\n"
+
+symbolTxt = ""
+for i in symbolTable:
+    symbolTxt += str(symbolTable[i]).strip('"\'') + ".	" + str(i).strip('"\'')
+    symbolTxt += "\n"
+
+errorTxt = ""
+for i in errors:
+    errorTxt += str(i).strip('"\'') + ".	"
+    for x in errors[i]:
+        errorTxt += str(x).strip('"\'') + " "
+    errorTxt += "\n"
+
+print(tokenTxt)
+print(symbolTable)
+print(errors)
+
+with open("lexical_errors.txt", "w") as lexical:
+    lexical.write(errorTxt)
+
+with open("tokens.txt", "w") as tokenFile:
+    tokenFile.write(tokenTxt)
+
+with open("symbol_table.txt", "w") as symbFile:
+    symbFile.write(symbolTxt)
