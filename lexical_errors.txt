@@ -1,5 +1,1 @@
-3.	('23a', 'Invalid number') 
-6.	('=#', 'Invalid input') 
-10.	('2m', 'Invalid number') 
-11.	('#', 'Invalid input') 
-12.	('!', 'Invalid input') 
+There is no lexical error.

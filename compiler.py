@@ -41,15 +41,16 @@ lowercase_letters = {chr(i) for i in range(ord('a'), ord('z') + 1)}
 uppercase_letters = {i.upper() for i in lowercase_letters}
 letter = lowercase_letters.union(uppercase_letters)
 whitespace = {i for i in ' \n\r\t\v\f'}
-symbol_except_eq = {i for i in ';:,[]()+-*<{}'}
+symbol_except_eq = {i for i in ';:,[]()+-<{}'}
 
 #TODO
-after_id_acc = {' ', '=', '<', '(', ')', '{', '}', '[', ']', ';', ':', '+', '-', '*'}  # TODO complete
+after_id_acc = {' ', '=', '<', '(', ')', '{', '}', '[', ']', ';', ':', '+', '-', '*', ','}  # TODO complete
 after_id_acc = after_id_acc.union(whitespace)
-after_num_acc = {' ', '=', '<', '(', ')', '{', '}', '[', ']', ';', ':', '+', '-', '*'}  # TODO complete
+after_num_acc = {' ', '=', '<', '(', ')', '{', '}', '[', ']', ';', ':', '+', '-', '*', ','}  # TODO complete
 after_num_acc = after_num_acc.union(whitespace)
 after_eq_acc = {'('}
 after_eq_acc = after_eq_acc.union(whitespace).union(letter).union(digit)
+after_star_acc = after_eq_acc
 
 #alphabet = {chr(i) for i in range(32, 127)} + whitespace + ''  # all printable ASCIIs
 # TODO defining others!
@@ -98,7 +99,8 @@ table['start'].update({'=': 'symbol_2'})
 table['start'].update({'/': 'COM_1'})
 for i in whitespace:
     table['start'].update({i: 'whitespace'})
-table['start'].update({'*': 'V'})  # TODO Check V?
+table['start'].update({'*': 'V'})
+#table['start'].update({'EOF': 'END'})
 table['start'].update({'other': 'invalid_input'})
 
 for i in letter.union(digit):
@@ -106,6 +108,8 @@ for i in letter.union(digit):
 for i in after_id_acc:
     table['ID_KEY'].update({i: 'ID_KEY_ACC_*'})
 table['ID_KEY'].update({'other': 'invalid_input'})
+table['ID_KEY'].update({'EOF': 'ID_KEY_ACC'})
+
 # for i in ID_KEY_other:
 #    table['ID_KEY'].update({i: 'invalid_input'})
 
@@ -114,6 +118,8 @@ for i in digit:
 for i in after_num_acc:
     table['NUM'].update({i: 'NUM_ACC_*'})
 table['NUM'].update({'other': 'invalid_number'})
+table['NUM'].update({'EOF': 'NUM_ACC'})
+
 # for i in NUM_other:
 #    table['NUM'].update({i: 'invalid_number'})
 
@@ -121,6 +127,8 @@ for i in after_eq_acc:
     table['symbol_2'].update({i: 'symbol_4_*'})
 table['symbol_2'].update({'=': 'symbol_3'})
 table['symbol_2'].update({'other': 'invalid_input'})
+table['symbol_2'].update({'EOF': 'symbol_4'})
+
 # for i in alphabet - {'='}:
 #    table['symbol_2'].update({i: 'symbol_4_*'})
 
@@ -129,29 +137,39 @@ table['symbol_2'].update({'other': 'invalid_input'})
 table['COM_1'].update({'*': 'COM_2'})
 table['COM_1'].update({'/': 'COM_4'})
 table['COM_1'].update({'other': 'invalid_input_*'})
+table['COM_1'].update({'EOF': 'invalid_input'})
+
 
 # for i in alphabet - {'', '*'}:
 #    table['COM_2'].update({i: 'COM_2'})
 table['COM_2'].update({'other': 'COM_2'})
-table['COM_2'].update({'': 'unclosed_comment'})
 table['COM_2'].update({'*': 'COM_3'})
+table['COM_2'].update({'EOF': 'unclosed_comment'})
+
 
 # for i in alphabet - {'', '\n'}:
 #    table['COM_4'].update({i: 'COM_4'})
 table['COM_4'].update({'other': 'COM_4'})
 table['COM_4'].update({'': 'COM_2_ACC'})
 table['COM_4'].update({'\n': 'COM_2_ACC'})
+table['COM_4'].update({'EOF': 'COM_2_ACC'})
+
 
 # for i in alphabet - {'', '/'}:
 #    table['COM_3'].update({i: 'COM_2'})
 table['COM_3'].update({'other': 'COM_2'})
 table['COM_3'].update({'': 'unclosed_comment'})
 table['COM_3'].update({'/': 'COM_1_ACC'})
+table['COM_3'].update({'EOF': 'unclosed_comment'})
 
 # for i in alphabet - {'/'}:
 #    table['V'].update({i: 'invalid_input_*'})
-table['V'].update({'other': 'invalid_input_*'})
+for i in after_star_acc:
+    table['V'].update({i: 'symbol_4_*'})
+table['V'].update({'other': 'invalid_input'})
 table['V'].update({'/': 'unmatched_comment'})
+table['V'].update({'EOF': 'symbol_1'})
+
 #################
 
 lineCount = 1
@@ -177,14 +195,25 @@ while getNextToken and i < len(inputLine):
     lexeme = ""
     state = "start"
     while True:
-        if inputLine[i] in table[state]:
+        if i < len(inputLine) and inputLine[i] in table[state]:
             state = (table[state])[inputLine[i]]
+            lexeme += inputLine[i]
+            if inputLine[i] == '\n':
+                lineCount += 1
+            temp = 0
+        elif i == len(inputLine):
+            state = (table[state])["EOF"]
         else:
             state = (table[state])["other"]
+            lexeme += inputLine[i]
+            if inputLine[i] == '\n':
+                lineCount += 1
+
         print(state)
-        lexeme += inputLine[i]
         flag = 0
         if state == "ID_KEY_ACC_*":
+            if inputLine[i] == '\n':
+                lineCount -= 1
             lexeme = lexeme[0: len(lexeme) - 1]
             if lexeme in keywords:
                 addToken("KEYWORD", lexeme, lineCount)
@@ -193,10 +222,20 @@ while getNextToken and i < len(inputLine):
                 addSymbolTable(lexeme)
             i -= 1
 
+
+        elif state == "ID_KEY_ACC":
+            if lexeme in keywords:
+                addToken("KEYWORD", lexeme, lineCount)
+            else:
+                addToken("ID", lexeme, lineCount)
+                addSymbolTable(lexeme)
+
         elif state == "invalid_input":
             addError(lexeme, "Invalid input", lineCount)
 
         elif state == "invalid_input_*":
+            if inputLine[i] == '\n':
+                lineCount -= 1
             addError(lexeme[0: len(lexeme) - 1], "Invalid input", lineCount)
             i -= 1
 
@@ -204,8 +243,13 @@ while getNextToken and i < len(inputLine):
             addError(lexeme, "Invalid number", lineCount)
 
         elif state == "NUM_ACC_*":
+            if inputLine[i] == '\n':
+                lineCount -= 1
             addToken("NUM", lexeme[0: len(lexeme) - 1], lineCount)
             i -= 1
+
+        elif state == "NUM_ACC":
+            addToken("NUM", lexeme, lineCount)
 
         elif state == "unmatched_comment":
             addError(lexeme, "Unmatched comment", lineCount)
@@ -227,12 +271,16 @@ while getNextToken and i < len(inputLine):
             addToken("SYMBOL", lexeme, lineCount)
 
         elif state == "symbol_4_*":
+            if inputLine[i] == '\n':
+                lineCount -= 1
             addToken("SYMBOL", lexeme[0: len(lexeme) - 1], lineCount)
             i -= 1
 
+        elif state == "symbol_4":
+            addToken("SYMBOL", lexeme, lineCount)
+
         elif state == "whitespace":
-            if inputLine[i] == '\n':
-                lineCount += 1
+            temp = 0
 
         else:
             flag = 1
@@ -246,11 +294,13 @@ while getNextToken and i < len(inputLine):
         if flag == 0:
             break
 
+print()
+
 tokenTxt = ""
 for i in tokens:
     tokenTxt += str(i).strip('"\'') + ".	"
     for x in tokens[i]:
-        tokenTxt += str(x).strip('"\'') + " "
+        tokenTxt += "(" + str(x[0]).strip('"\'') + ", " + str(x[1]).strip('"\'') + ")" + " "
     tokenTxt += "\n"
 
 symbolTxt = ""
@@ -262,9 +312,10 @@ errorTxt = ""
 for i in errors:
     errorTxt += str(i).strip('"\'') + ".	"
     for x in errors[i]:
-        errorTxt += str(x).strip('"\'') + " "
+        errorTxt += "(" + str(x[0]).strip('"\'') + ", " + str(x[1]).strip('"\'') + ")" + " "
     errorTxt += "\n"
-
+if len(errors) == 0:
+    errorTxt = "There is no lexical error."
 print(tokenTxt)
 print(symbolTable)
 print(errors)
