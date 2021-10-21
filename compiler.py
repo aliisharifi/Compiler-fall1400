@@ -209,7 +209,6 @@ while getNextToken and i < len(inputLine):
             if inputLine[i] == '\n':
                 lineCount += 1
 
-        print(state)
         flag = 0
         if state == "ID_KEY_ACC_*":
             if inputLine[i] == '\n':
@@ -294,7 +293,6 @@ while getNextToken and i < len(inputLine):
         if flag == 0:
             break
 
-print()
 
 tokenTxt = ""
 for i in tokens:
@@ -312,13 +310,13 @@ errorTxt = ""
 for i in errors:
     errorTxt += str(i).strip('"\'') + ".	"
     for x in errors[i]:
-        errorTxt += "(" + str(x[0]).strip('"\'') + ", " + str(x[1]).strip('"\'') + ")" + " "
+        if x[1] == 'Unclosed comment':
+            errorTxt += '(' + (str(x[0][:7]) + '...').strip('"\'') + ", " + str(x[1]).strip('"\'') + ")" + " "
+        else:
+            errorTxt += "(" + str(x[0]).strip('"\'') + ", " + str(x[1]).strip('"\'') + ")" + " "
     errorTxt += "\n"
 if len(errors) == 0:
     errorTxt = "There is no lexical error."
-print(tokenTxt)
-print(symbolTable)
-print(errors)
 
 with open("lexical_errors.txt", "w") as lexical:
     lexical.write(errorTxt)
