@@ -171,6 +171,7 @@ table['V'].update({'/': 'unmatched_comment'})
 table['V'].update({'EOF': 'symbol_1'})
 
 #################
+
 lineCount = 1
 state = ""
 tokens = {}
