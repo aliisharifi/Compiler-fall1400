@@ -1,3 +1,6 @@
+# Ali Sharifi 98109601
+# Hamid Reza Dehbashi 98105762
+
 def addToken(token, lexeme_temp, line):
     """
     Gets a token and puts its lexeme on the corresponding line in the tokens table

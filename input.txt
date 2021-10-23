@@ -3,6 +3,8 @@ int f(int a) {
         output(b);
         f(b - 1);
     }
+    /**/
+    /****/*$*/h/hello
     if (a == 1) {
         output(a);
         return 0;
