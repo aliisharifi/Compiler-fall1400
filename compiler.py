@@ -41,16 +41,17 @@ lowercase_letters = {chr(i) for i in range(ord('a'), ord('z') + 1)}
 uppercase_letters = {i.upper() for i in lowercase_letters}
 letter = lowercase_letters.union(uppercase_letters)
 whitespace = {i for i in ' \n\r\t\v\f'}
-symbol_except_eq = {i for i in ';:,[]()+-<{}'}
+symbol_except_eqStar = {i for i in ';:,[]()+-<{}'}
 
 #TODO
-after_id_acc = {' ', '=', '<', '(', ')', '{', '}', '[', ']', ';', ':', '+', '-', '*', ','}  # TODO complete
+after_id_acc = {';', ':', ',', '[', ']', '(', ')', '{', '}', '+', '-', '*', '=', '<', '/'}
 after_id_acc = after_id_acc.union(whitespace)
-after_num_acc = {' ', '=', '<', '(', ')', '{', '}', '[', ']', ';', ':', '+', '-', '*', ','}  # TODO complete
+after_num_acc = {';', ':', ',', '[', ']', '(', ')', '{', '}', '+', '-', '*', '=', '<', '/'}
 after_num_acc = after_num_acc.union(whitespace)
-after_eq_acc = {'('}
-after_eq_acc = after_eq_acc.union(whitespace).union(letter).union(digit)
-after_star_acc = after_eq_acc
+after_eq_acc = {'/', '*'}
+after_eq_acc = after_eq_acc.union(whitespace).union(letter).union(digit).union(symbol_except_eqStar)
+after_star_acc = {'=', '*'}
+after_star_acc = after_star_acc.union(whitespace).union(letter).union(digit).union(symbol_except_eqStar)
 
 #alphabet = {chr(i) for i in range(32, 127)} + whitespace + ''  # all printable ASCIIs
 # TODO defining others!
@@ -93,7 +94,7 @@ for i in letter:
     table['start'].update({i: 'ID_KEY'})
 for i in digit:
     table['start'].update({i: 'NUM'})
-for i in symbol_except_eq:
+for i in symbol_except_eqStar:
     table['start'].update({i: 'symbol_1'})
 table['start'].update({'=': 'symbol_2'})
 table['start'].update({'/': 'COM_1'})
@@ -136,7 +137,16 @@ table['symbol_2'].update({'EOF': 'symbol_4'})
 #    table['COM_1'].update({i: 'invalid_input_*'})
 table['COM_1'].update({'*': 'COM_2'})
 table['COM_1'].update({'/': 'COM_4'})
-table['COM_1'].update({'other': 'invalid_input_*'})
+for i in letter:
+    table['COM_1'].update({i: 'invalid_input_*'})
+for i in digit:
+    table['COM_1'].update({i: 'invalid_input_*'})
+for i in whitespace:
+    table['COM_1'].update({i: 'invalid_input_*'})
+for i in symbol_except_eqStar:
+    table['COM_1'].update({i: 'invalid_input_*'})
+
+table['COM_1'].update({'other': 'invalid_input'})
 table['COM_1'].update({'EOF': 'invalid_input'})
 
 
@@ -150,7 +160,7 @@ table['COM_2'].update({'EOF': 'unclosed_comment'})
 # for i in alphabet - {'', '\n'}:
 #    table['COM_4'].update({i: 'COM_4'})
 table['COM_4'].update({'other': 'COM_4'})
-table['COM_4'].update({'': 'COM_2_ACC'})
+#table['COM_4'].update({'': 'COM_2_ACC'})
 table['COM_4'].update({'\n': 'COM_2_ACC'})
 table['COM_4'].update({'EOF': 'COM_2_ACC'})
 
@@ -158,7 +168,7 @@ table['COM_4'].update({'EOF': 'COM_2_ACC'})
 # for i in alphabet - {'', '/'}:
 #    table['COM_3'].update({i: 'COM_2'})
 table['COM_3'].update({'other': 'COM_2'})
-table['COM_3'].update({'': 'unclosed_comment'})
+#table['COM_3'].update({'': 'unclosed_comment'})
 table['COM_3'].update({'/': 'COM_1_ACC'})
 table['COM_3'].update({'EOF': 'unclosed_comment'})
 
@@ -171,7 +181,6 @@ table['V'].update({'/': 'unmatched_comment'})
 table['V'].update({'EOF': 'symbol_1'})
 
 #################
-
 lineCount = 1
 state = ""
 tokens = {}
