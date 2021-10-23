@@ -1,4 +1,0 @@
-2.	(*/, Unmatched comment) 
-7.	(*$, Invalid input) (*/, Unmatched comment) (/, Invalid input) 
-15.	(/, Invalid input) 
-18.	(/*void ..., Unclosed comment) 
