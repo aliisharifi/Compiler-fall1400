@@ -12,3 +12,5 @@ nonterminal -> class
 	start_node
 	final_node
 
+dictionary {name : id}
+
