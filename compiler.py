@@ -175,107 +175,124 @@ f = open('input.txt', 'r')
 inputLine = f.read()
 
 i = 0
-while getNextToken and i < len(inputLine):
-    lexeme = ""
-    state = "start"
-    while True:
-        if i < len(inputLine) and inputLine[i] in table[state]:
-            state = (table[state])[inputLine[i]]
-            lexeme += inputLine[i]
-            if inputLine[i] == '\n':
-                lineCount += 1
-            temp = 0
-        elif i == len(inputLine):
-            state = (table[state])["EOF"]
-        else:
-            state = (table[state])["other"]
-            lexeme += inputLine[i]
-            if inputLine[i] == '\n':
-                lineCount += 1
 
-        flag = 0
-        if state == "ID_KEY_ACC_*":
-            if inputLine[i] == '\n':
-                lineCount -= 1
-            lexeme = lexeme[0: len(lexeme) - 1]
-            if lexeme in keywords:
-                addToken("KEYWORD", lexeme, lineCount)
+def get_next_token():
+    ret = ''
+    global i
+    if i == len(inputLine):
+        return '$', '$'
+    while i < len(inputLine):
+        lexeme = ""
+        state = "start"
+        while True:
+            if i < len(inputLine) and inputLine[i] in table[state]:
+                state = (table[state])[inputLine[i]]
+                lexeme += inputLine[i]
+                if inputLine[i] == '\n':
+                    lineCount += 1
+                temp = 0
+            elif i == len(inputLine):
+                state = (table[state])["EOF"]
             else:
-                addToken("ID", lexeme, lineCount)
-                addSymbolTable(lexeme)
-            i -= 1
+                state = (table[state])["other"]
+                lexeme += inputLine[i]
+                if inputLine[i] == '\n':
+                    lineCount += 1
 
-        elif state == "ID_KEY_ACC":
-            if lexeme in keywords:
-                addToken("KEYWORD", lexeme, lineCount)
+            flag = 0
+            if state == "ID_KEY_ACC_*":
+                if inputLine[i] == '\n':
+                    lineCount -= 1
+                lexeme = lexeme[0: len(lexeme) - 1]
+                if lexeme in keywords:
+                    addToken("KEYWORD", lexeme, lineCount)
+                    ret = 'KEYWORD', lexeme
+                else:
+                    addToken("ID", lexeme, lineCount)
+                    ret = 'ID', lexeme
+                    addSymbolTable(lexeme)
+                i -= 1
+
+            elif state == "ID_KEY_ACC":
+                if lexeme in keywords:
+                    addToken("KEYWORD", lexeme, lineCount)
+                    ret = 'KEYWORD', lexeme
+                else:
+                    addToken("ID", lexeme, lineCount)
+                    ret = 'ID', lexeme
+                    addSymbolTable(lexeme)
+
+            elif state == "invalid_input":
+                addError(lexeme, "Invalid input", lineCount)
+
+            elif state == "invalid_input_*":
+                if inputLine[i] == '\n':
+                    lineCount -= 1
+                addError(lexeme[0: len(lexeme) - 1], "Invalid input", lineCount)
+                i -= 1
+
+            elif state == "invalid_number":
+                addError(lexeme, "Invalid number", lineCount)
+
+            elif state == "NUM_ACC_*":
+                if inputLine[i] == '\n':
+                    lineCount -= 1
+                addToken("NUM", lexeme[0: len(lexeme) - 1], lineCount)
+                ret = 'NUM', lexeme[0:len(lexeme) - 1]
+                i -= 1
+
+            elif state == "NUM_ACC":
+                addToken("NUM", lexeme, lineCount)
+                ret = 'NUM', lexeme
+
+            elif state == "unmatched_comment":
+                addError(lexeme, "Unmatched comment", lineCount)
+
+            elif state == "COM_1_ACC":
+                openComment = False
+
+            elif state == "COM_2_ACC":
+                openComment = False
+
+            elif state == "unclosed_comment":
+                openComment = False
+                if len(lexeme) > 7:
+                    lexeme = lexeme[0:7] + "..."
+                addError(lexeme, "Unclosed comment", startComment)
+
+            elif state == "symbol_1":
+                addToken("SYMBOL", lexeme, lineCount)
+                ret = 'SYMBOL', lexeme
+
+            elif state == "symbol_3":
+                addToken("SYMBOL", lexeme, lineCount)
+                ret = 'SYMBOL', lexeme
+
+            elif state == "symbol_4_*":
+                if inputLine[i] == '\n':
+                    lineCount -= 1
+                addToken("SYMBOL", lexeme[0: len(lexeme) - 1], lineCount)
+                ret = 'SYMBOL', lexeme[0:len(lexeme) - 1]
+                i -= 1
+
+            elif state == "symbol_4":
+                addToken("SYMBOL", lexeme, lineCount)
+                ret = 'SYMBOL', lexeme
+
+            elif state == "whitespace":
+                temp = 0
+
             else:
-                addToken("ID", lexeme, lineCount)
-                addSymbolTable(lexeme)
+                flag = 1
+                if state == "COM_2" or state == "COM_4":
+                    if not openComment:
+                        startComment = lineCount
+                    openComment = True
 
-        elif state == "invalid_input":
-            addError(lexeme, "Invalid input", lineCount)
-
-        elif state == "invalid_input_*":
-            if inputLine[i] == '\n':
-                lineCount -= 1
-            addError(lexeme[0: len(lexeme) - 1], "Invalid input", lineCount)
-            i -= 1
-
-        elif state == "invalid_number":
-            addError(lexeme, "Invalid number", lineCount)
-
-        elif state == "NUM_ACC_*":
-            if inputLine[i] == '\n':
-                lineCount -= 1
-            addToken("NUM", lexeme[0: len(lexeme) - 1], lineCount)
-            i -= 1
-
-        elif state == "NUM_ACC":
-            addToken("NUM", lexeme, lineCount)
-
-        elif state == "unmatched_comment":
-            addError(lexeme, "Unmatched comment", lineCount)
-
-        elif state == "COM_1_ACC":
-            openComment = False
-
-        elif state == "COM_2_ACC":
-            openComment = False
-
-        elif state == "unclosed_comment":
-            openComment = False
-            if len(lexeme) > 7:
-                lexeme = lexeme[0:7] + "..."
-            addError(lexeme, "Unclosed comment", startComment)
-
-        elif state == "symbol_1":
-            addToken("SYMBOL", lexeme, lineCount)
-
-        elif state == "symbol_3":
-            addToken("SYMBOL", lexeme, lineCount)
-
-        elif state == "symbol_4_*":
-            if inputLine[i] == '\n':
-                lineCount -= 1
-            addToken("SYMBOL", lexeme[0: len(lexeme) - 1], lineCount)
-            i -= 1
-
-        elif state == "symbol_4":
-            addToken("SYMBOL", lexeme, lineCount)
-
-        elif state == "whitespace":
-            temp = 0
-
-        else:
-            flag = 1
-            if state == "COM_2" or state == "COM_4":
-                if not openComment:
-                    startComment = lineCount
-                openComment = True
-
-        i += 1
-        if flag == 0:
-            break
+            i += 1
+            if flag == 0:
+                break
+        return ret
 
 # Reformat tokens in tokenTxt
 tokenTxt = ""
