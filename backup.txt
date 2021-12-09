@@ -1,0 +1,45 @@
+1. Program -> Declaration_list $
+2. Declaration_list -> Declaration Declaration_list | EPSILON
+3. Declaration -> Declaration_initial Declaration_prime
+4. Declaration_initial -> Type_specifier ID
+5. Declaration_prime -> Fun_declaration_prime | Var_declaration_prime
+6. Var_declaration_prime -> ; | [ NUM ] ;
+7. Fun_declaration_prime -> ( Params ) Compound_stmt
+8. Type_specifier -> int | void
+9. Params -> int ID Param_prime Param_list | void
+10. Param_list -> , Param Param_list | EPSILON
+11. Param -> Declaration_initial Param_prime
+12. Param_prime -> [ ] | EPSILON
+13. Compound_stmt -> { Declaration_list Statement_list }
+14. Statement_list -> Statement Statement_list | EPSILON
+15. Statement -> Expression_stmt | Compound_stmt | Selection_stmt | Iteration_stmt | Return_stmt
+16. Expression_stmt -> Expression ; | break ; | ;
+17. Selection_stmt -> if ( Expression ) Statement Else_stmt
+18. Else_stmt -> endif | else Statement endif
+19. Iteration_stmt -> repeat Statement until ( Expression )
+20. Return_stmt -> return Return_stmt_prime
+21. Return_stmt_prime -> ; | Expression ;
+22. Expression -> Simple_expression_zegond | ID B
+23. B -> = Expression | [ Expression ] H | Simple_expression_prime
+24. H -> = Expression | G D C
+25. Simple_expression_zegond -> Additive_expression_zegond C
+26. Simple_expression_prime -> Additive_expression_prime C
+27. C -> Relop Additive_expression | EPSILON
+28. Relop -> < | ==
+29. Additive_expression -> Term D
+30. Additive_expression_prime -> Term_prime D
+31. Additive_expression_zegond -> Term_zegond D
+32. D -> Addop Term D | EPSILON
+33. Addop -> + | _
+34. Term -> Factor G
+35. Term_prime -> Factor_prime G
+36. Term_zegond -> Factor_zegond G
+37. G -> * Factor G | EPSILON
+38. Factor -> ( Expression ) | ID Var_call_prime | NUM
+39. Var_call_prime -> ( Args ) | Var_prime
+40. Var_prime -> [ Expression ] | EPSILON
+41. Factor_prime -> ( Args ) | EPSILON
+42. Factor_zegond -> ( Expression ) | NUM
+43. Args -> Arg_list | EPSILON
+44. Arg_list -> Expression Arg_list_prime
+45. Arg_list_prime -> , Expression Arg_list_prime | EPSILON

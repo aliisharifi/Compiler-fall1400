@@ -1,0 +1,4 @@
+1.	(SYMBOL, :) 
+2.	(SYMBOL, :) 
+4.	(SYMBOL, =) 
+5.	(NUM, 123) (NUM, 32) 
