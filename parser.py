@@ -34,8 +34,8 @@ class NonTerminal:
         self.predict = []
 
 
-def getNonTermByName(name):
-    for nonterm in NonTerminal.nonTerminals:
+def getNonTermByName(name, nonTerminals):
+    for nonterm in nonTerminals:
         if nonterm.name == name:
             return nonterm
     return None
@@ -48,7 +48,7 @@ def get_next_token():
     pass
 
 
-def initialize_first():
+def initialize_first(nonTerminals):
     with open('first.txt', 'r') as file:
         frstTxt = file.readlines()
 
@@ -61,15 +61,16 @@ def initialize_first():
     for i in range(1, len(frstTxt)):
         tempStr = frstTxt[i].split("\t")
         nontermName = tempStr[0]
-        nonterm = getNonTermByName(nontermName)
+        nonterm = getNonTermByName(nontermName, nonTerminals)
         if i == 2:
             print(tempStr)
         for j in range(1, len(tempStr)):
             if tempStr[j] == '+' or tempStr[j] == '+\n':
                 nonterm.first.append(terminals[j - 1])
+    return nonTerminals
 
 
-def initialize_follow():
+def initialize_follow(nonTerminals):
     with open('follow.txt', 'r') as file:
         fllwTxt = file.readlines()
 
@@ -81,10 +82,11 @@ def initialize_follow():
     for i in range(1, len(fllwTxt)):
         tempStr = fllwTxt[i].split("\t")
         nontermName = tempStr[0]
-        nonterm = getNonTermByName(nontermName)
+        nonterm = getNonTermByName(nontermName, nonTerminals)
         for j in range(1, len(tempStr)):
             if tempStr[j] == '+' or tempStr[j] == '+\n':
                 nonterm.follow.append(terminals[j - 1])
+    return nonTerminals
 
 
 def initialize_nodes():
@@ -92,6 +94,7 @@ def initialize_nodes():
     with open('newGr2.txt', 'r') as file:
         grmstr = file.readlines()
 
+    nodes = []
     nonTerminals = []
     nameToId = {}
     for i in range(0, len(grmstr)):
@@ -105,7 +108,9 @@ def initialize_nodes():
         x = re.search("(.+) -> (.+)", grmstr[i])
         nonterm = getNonTermByName(x.group(1))
         startNode = Node()
+        nodes.append(startNode)
         finalNode = Node()
+        nodes.append(finalNode)
         startNode.start = nonterm
         finalNode.final = nonterm
         nonterm.start = startNode
@@ -126,24 +131,26 @@ def initialize_nodes():
             # print(rule)
             for j in range(0, len(rule) - 1):
                 temp = Node()
+                nodes.append(temp)
                 # print(temp.id)
                 lastNode.to.update({rule[j]: temp})
                 lastNode = temp
             lastNode.to.update({rule[len(rule) - 1]: finalNode})
+    return nodes, nonTerminals
 
 
 def initialize_parser():
-    initialize_nodes()
-    initialize_first()
-    initialize_follow()
+    nodes, nonTerminals = initialize_nodes()
+    nonTerminals = initialize_first()
+    nonTerminals = initialize_follow()
     parse_table_txt = ""
     syntax_error_txt = ""
-    traverse_list = []
+    traverse_list = [nodes[0]]
     middle_edge = '├── '
     last_edge = '└── '
     cont_edges = '│   '
     space = '    '
-    return Node.nodes, NonTerminal.nonTerminals, parse_table_txt, syntax_error_txt, traverse_list, middle_edge, last_edge, cont_edges, space
+    return nodes, nonTerminals, parse_table_txt, syntax_error_txt, traverse_list, middle_edge, last_edge, cont_edges, space
 """
 def write_file():
     f = open('parse_table.txt', mode='w+')
