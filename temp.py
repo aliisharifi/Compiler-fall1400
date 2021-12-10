@@ -285,19 +285,21 @@ def reformat(str):
                 break
         j += 1"""
 
+
     for i in range(len(strList)-1, -1, -1):
         for j in range(len(strList[i])):
+            print(len(strList), len(strList[i]), i, j)
             if i == len(strList)-1:
                 if strList[i][j] == '│':
                     k = i
-                    while strList[k][j] == '│':
+                    while k >= 0 and strList[k][j] == '│':
                         strList[k][j] = ' '
                         k -= 1
                     strList[k][j] = '└'
 
-            elif strList[i][j] == '│' and (strList[i+1][j] != '│' and strList[i+1][j] != '├'  and strList[i+1][j] != '└'):
+            elif strList[i][j] == '│' and ((j < len(strList[i+1]) and (strList[i+1][j] != '│' and strList[i+1][j] != '├'  and strList[i+1][j] != '└')) or (j >= len(strList[i+1]))):
                 k = i
-                while strList[k][j] == '│':
+                while k >= 0 and strList[k][j] == '│':
                     strList[k][j] = ' '
                     k -= 1
                 strList[k][j] = '└'
@@ -311,7 +313,7 @@ def reformat(str):
 def write_file_parser():
     global parse_table_txt, syntax_error_txt
     #print(parse_table_txt)
-    #parse_table_txt = reformat(parse_table_txt)
+    parse_table_txt = reformat(parse_table_txt)
     with open('debug\\parse_table.txt', mode='w', encoding="utf-8") as f:
         f.write(parse_table_txt)
     if len(syntax_error_txt) == 0:
@@ -572,6 +574,26 @@ while traverse_list and not flag_exit:
     print(la_tok, la_role)
     match = False
     last_node = traverse_list.pop()
+    if last_node.final:
+        continue
+        """while True:
+            if la_role == 'NUM' or la_role == 'ID':
+                if la_role in last_node.final.follow:
+                    break
+                else:
+                    # illegal
+                    print(lineCount)
+                    syntax_error_txt += f'#{lineCount} : syntax error, illegal {la_role}\n'
+                    la_role, la_tok = get_next_token_parser()
+            else:
+                if la_tok in last_node.final.follow:
+                    break
+                else:
+                    # illegal
+                    print(lineCount)
+                    syntax_error_txt += f'#{lineCount} : syntax error, illegal {la_tok}\n'
+                    la_role, la_tok = get_next_token_parser()
+        continue"""
     for term_nonterm, node in last_node.to.items():
         res = getNonTermByName(term_nonterm)
         edge_type = last_edge if node.final else middle_edge
@@ -666,25 +688,7 @@ while traverse_list and not flag_exit:
             traverse_list.append(last_node)
             la_role, la_tok = get_next_token_parser()
             flag = False
-    if last_node.final:
-        while True:
-            if la_role == 'NUM' or la_role == 'ID':
-                if la_role in last_node.final.follow:
-                    break
-                else:
-                    # illegal
-                    print(lineCount)
-                    syntax_error_txt += f'#{lineCount} : syntax error, illegal {la_role}\n'
-                    la_role, la_tok = get_next_token_parser()
-            else:
-                if la_tok in last_node.final.follow:
-                    break
-                else:
-                    # illegal
-                    print(lineCount)
-                    syntax_error_txt += f'#{lineCount} : syntax error, illegal {la_tok}\n'
-                    la_role, la_tok = get_next_token_parser()
-        continue
+
 
 write_file_lexical()
 write_file_parser()
