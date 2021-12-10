@@ -30,7 +30,7 @@
 30. Additive_expression_prime -> Term_prime D
 31. Additive_expression_zegond -> Term_zegond D
 32. D -> Addop Term D | EPSILON
-33. Addop -> + | _
+33. Addop -> + | -
 34. Term -> Factor G
 35. Term_prime -> Factor_prime G
 36. Term_zegond -> Factor_zegond G

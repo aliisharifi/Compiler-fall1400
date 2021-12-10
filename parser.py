@@ -1,9 +1,7 @@
 import re
 
 import compiler
-import scanner
 
-i = 0
 class Node:
     idLen = 0
     nodes = []
@@ -61,16 +59,15 @@ def initialize_first(nonTerminals):
     for i in range(1, len(frstTxt)):
         tempStr = frstTxt[i].split("\t")
         nontermName = tempStr[0]
-        nonterm = getNonTermByName(nontermName, nonTerminals)
+        nonterm = getNonTermByName(nontermName)
         if i == 2:
             print(tempStr)
         for j in range(1, len(tempStr)):
             if tempStr[j] == '+' or tempStr[j] == '+\n':
                 nonterm.first.append(terminals[j - 1])
-    return nonTerminals
 
 
-def initialize_follow(nonTerminals):
+def initialize_follow():
     with open('follow.txt', 'r') as file:
         fllwTxt = file.readlines()
 
@@ -82,11 +79,10 @@ def initialize_follow(nonTerminals):
     for i in range(1, len(fllwTxt)):
         tempStr = fllwTxt[i].split("\t")
         nontermName = tempStr[0]
-        nonterm = getNonTermByName(nontermName, nonTerminals)
+        nonterm = getNonTermByName(nontermName)
         for j in range(1, len(tempStr)):
             if tempStr[j] == '+' or tempStr[j] == '+\n':
                 nonterm.follow.append(terminals[j - 1])
-    return nonTerminals
 
 
 def initialize_nodes():
@@ -214,11 +210,10 @@ def calc_line_first_part(traverse_list, cont_edges, space):
             line_first_part += space
         else:
             line_first_part += cont_edges
-    #pass
     return line_first_part
 
 def run_parser(nodes, nonTerminals, parse_table_txt, syntax_error_txt, traverse_list, middle_edge, last_edge, cont_edges, space, lineCount):
-    la_role, la_tok = get_next_token()
+    la_role, la_tok = get_next_token_parser()
     #f.write('Program\n')
     parse_table_txt += 'Program\n'
     while traverse_list:
@@ -232,14 +227,14 @@ def run_parser(nodes, nonTerminals, parse_table_txt, syntax_error_txt, traverse_
                     else:
                         # illegal
                         syntax_error_txt += f'#{lineCount} : syntax error, illegal {la_role}\n'
-                        la_role, la_tok = get_next_token()
+                        la_role, la_tok = get_next_token_parser()
                 else:
                     if la_tok in last_node.final.follow:
                         break
                     else:
                         # illegal
                         syntax_error_txt += f'#{lineCount} : syntax error, illegal {la_tok}\n'
-                        la_role, la_tok = get_next_token()
+                        la_role, la_tok = get_next_token_parser()
             continue
         for term_nonterm, node in last_node.to.items():
             res = getNonTermByName(term_nonterm, nonTerminals)
@@ -292,7 +287,7 @@ def run_parser(nodes, nonTerminals, parse_table_txt, syntax_error_txt, traverse_
                         match = True
                         break
         if match:
-            la_role, la_tok = get_next_token()
+            la_role, la_tok = get_next_token_parser()
             match = False
         else:
             # asumption : last_node has only one edge
@@ -304,7 +299,7 @@ def run_parser(nodes, nonTerminals, parse_table_txt, syntax_error_txt, traverse_
                     if la_role == 'NUM' or la_role == 'ID':
                         if la_role in res.follow:
                             # pring missing
-                            syntax_errors_txt += f'#{lineCount} : syntax error, missing {term_nonterm}\n'
+                            syntax_error_txt += f'#{lineCount} : syntax error, missing {term_nonterm}\n'
                             traverse_list.append(node)
                             flag = True
                             err_name = term_nonterm
@@ -312,11 +307,11 @@ def run_parser(nodes, nonTerminals, parse_table_txt, syntax_error_txt, traverse_
                         # else:
                         #     # print illegal
                         #     traverse_list.append(last_node)
-                        #     la_role, la_tok = get_next_token()
+                        #     la_role, la_tok = get_next_token_parser()
                     else:
                         if la_tok in res.follow:
                             # print missing
-                            syntax_errors_txt += f'#{lineCount} : syntax error, missing {term_nonterm}\n'
+                            syntax_error_txt += f'#{lineCount} : syntax error, missing {term_nonterm}\n'
                             traverse_list.append(node)
                             flag = True
                             err_name = term_nonterm
@@ -324,20 +319,20 @@ def run_parser(nodes, nonTerminals, parse_table_txt, syntax_error_txt, traverse_
                         # else:
                         #     # print illegal
                         #     traverse_list.append(last_node)
-                        #     la_role, la_tok = get_next_token()
+                        #     la_role, la_tok = get_next_token_parser()
                 else:
                     if len(last_node.to) == 1:
                         # print missing
-                        syntax_errors_txt += f'#{lineCount} : syntax error, missing {term_nonterm}\n'
+                        syntax_error_txt += f'#{lineCount} : syntax error, missing {term_nonterm}\n'
                         traverse_list.append(node)
                         flag = True
                         err_name = term_nonterm
                         break
             if not flag:
                 # print illegal
-                syntax_errors_txt += f'#{lineCount} : syntax error, illegal {err_name}\n'
+                syntax_error_txt += f'#{lineCount} : syntax error, illegal {err_name}\n'
                 traverse_list.append(last_node)
-                la_role, la_tok = get_next_token()
+                la_role, la_tok = get_next_token_parser()
                 flag = False
             
     return parse_table_txt, syntax_error_txt, traverse_list
