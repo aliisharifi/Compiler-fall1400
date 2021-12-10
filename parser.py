@@ -141,8 +141,8 @@ def initialize_nodes():
 
 def initialize_parser():
     nodes, nonTerminals = initialize_nodes()
-    nonTerminals = initialize_first()
-    nonTerminals = initialize_follow()
+    nonTerminals = initialize_first(nonTerminals)
+    nonTerminals = initialize_follow(nonTerminals)
     parse_table_txt = ""
     syntax_error_txt = ""
     traverse_list = [nodes[0]]
