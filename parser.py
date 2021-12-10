@@ -106,7 +106,7 @@ def initialize_nodes():
         nonTerminals.append(nonterm)
     for i in range(0, len(grmstr)):
         x = re.search("(.+) -> (.+)", grmstr[i])
-        nonterm = getNonTermByName(x.group(1))
+        nonterm = getNonTermByName(x.group(1), nonTerminals)
         startNode = Node()
         nodes.append(startNode)
         finalNode = Node()
@@ -219,11 +219,8 @@ def calc_line_first_part(traverse_list, cont_edges, space):
 
 def run_parser(nodes, nonTerminals, parse_table_txt, syntax_error_txt, traverse_list, middle_edge, last_edge, cont_edges, space, lineCount):
     la_role, la_tok = get_next_token()
-    # node with id 0?
-
     #f.write('Program\n')
     parse_table_txt += 'Program\n'
-    # while look_ahead != '$':
     while traverse_list:
         match = False
         last_node = traverse_list.pop()
@@ -234,16 +231,18 @@ def run_parser(nodes, nonTerminals, parse_table_txt, syntax_error_txt, traverse_
                         break
                     else:
                         # illegal
+                        syntax_error_txt += f'#{lineCount} : syntax error, illegal {la_role}\n'
                         la_role, la_tok = get_next_token()
                 else:
                     if la_tok in last_node.final.follow:
                         break
                     else:
                         # illegal
+                        syntax_error_txt += f'#{lineCount} : syntax error, illegal {la_tok}\n'
                         la_role, la_tok = get_next_token()
             continue
         for term_nonterm, node in last_node.to.items():
-            res = getNonTermByName(term_nonterm)
+            res = getNonTermByName(term_nonterm, nonTerminals)
             edge_type = last_edge if node.final else middle_edge
             if res:
                 if la_role == 'NUM' or la_role == 'ID':
@@ -297,28 +296,50 @@ def run_parser(nodes, nonTerminals, parse_table_txt, syntax_error_txt, traverse_
             match = False
         else:
             # asumption : last_node has only one edge
-            term_nonterm, node = list(last_node.to).pop()
-            res = getNonTermByName(term_nonterm)
-            if res:
-                if la_role == 'NUM' or la_role == 'ID':
-                    if la_role in res.follow:
-                        # pring missing
-                        traverse_list.append(node)
+            # term_nonterm, node = list(last_node.to).pop()
+            flag, err_name = False, None
+            for term_nonterm, node in last_node.to.items():
+                res = getNonTermByName(term_nonterm, nonTerminals)
+                if res:
+                    if la_role == 'NUM' or la_role == 'ID':
+                        if la_role in res.follow:
+                            # pring missing
+                            syntax_errors_txt += f'#{lineCount} : syntax error, missing {term_nonterm}\n'
+                            traverse_list.append(node)
+                            flag = True
+                            err_name = term_nonterm
+                            break
+                        # else:
+                        #     # print illegal
+                        #     traverse_list.append(last_node)
+                        #     la_role, la_tok = get_next_token()
                     else:
-                        # print illegal
-                        traverse_list.append(last_node)
-                        la_role, la_tok = get_next_token()
+                        if la_tok in res.follow:
+                            # print missing
+                            syntax_errors_txt += f'#{lineCount} : syntax error, missing {term_nonterm}\n'
+                            traverse_list.append(node)
+                            flag = True
+                            err_name = term_nonterm
+                            break
+                        # else:
+                        #     # print illegal
+                        #     traverse_list.append(last_node)
+                        #     la_role, la_tok = get_next_token()
                 else:
-                    if la_tok in res.follow:
+                    if len(last_node.to) == 1:
                         # print missing
+                        syntax_errors_txt += f'#{lineCount} : syntax error, missing {term_nonterm}\n'
                         traverse_list.append(node)
-                    else:
-                        # print illegal
-                        traverse_list.append(last_node)
-                        la_role, la_tok = get_next_token()
-            else:
-                # print missing
-                traverse_list.append(node)
+                        flag = True
+                        err_name = term_nonterm
+                        break
+            if not flag:
+                # print illegal
+                syntax_errors_txt += f'#{lineCount} : syntax error, illegal {err_name}\n'
+                traverse_list.append(last_node)
+                la_role, la_tok = get_next_token()
+                flag = False
+            
     return parse_table_txt, syntax_error_txt, traverse_list
 
 #e.close()
