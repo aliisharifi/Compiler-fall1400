@@ -7,8 +7,10 @@ with open('input.txt', 'r') as f:
 
 table, lineCount, state, tokens, errors, symbolTable, keywords, openComment, startComment = scanner.initScanner()
 
-nodes, nonTerminals = parser.initialize_first_follow_nodes()
+nodes, nonTerminals, parse_table_txt, syntax_error_txt, traverse_list, middle_edge, last_edge, cont_edges, space = \
+    parser.initialize_first_follow_nodes()
 
+parser.run_parser(nodes, nonTerminals, parse_table_txt, syntax_error_txt, traverse_list, middle_edge, last_edge, cont_edges, space, lineCount)
 
 def get_next_token():
     global table, lineCount, state, tokens, errors, symbolTable, keywords, openComment, startComment, i

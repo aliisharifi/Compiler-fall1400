@@ -43,6 +43,7 @@ def getNonTermByName(name):
 
 def get_next_token():
     role, token = compiler.get_next_token()
+    return (role, token)
     """returns (role, token)"""
     pass
 
@@ -209,7 +210,7 @@ def calc_line_first_part(traverse_list, cont_edges, space):
     #pass
     return line_first_part
 
-def run_parser(nodes, nonTerminals, parse_table_txt, syntax_error_txt, traverse_list, middle_edge, last_edge, cont_edges, space):
+def run_parser(nodes, nonTerminals, parse_table_txt, syntax_error_txt, traverse_list, middle_edge, last_edge, cont_edges, space, lineCount):
     la_role, la_tok = get_next_token()
     # node with id 0?
 
