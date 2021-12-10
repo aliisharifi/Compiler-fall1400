@@ -47,11 +47,17 @@ while traverse_list:
     if last_node.final:
         while True:
             if la_role == 'NUM' or la_role == 'ID':
-                if la_role not in last_node.final.follow:
+                if la_role in last_node.final.follow:
+                    break
+                # if la_role not in last_node.final.follow:
+                else:
                     # illegal
                     la_role, la_tok = get_next_token()
             else:
-                if la_tok not in last_node.final.follow():
+                if la_tok in last_node.final.follow:
+                    break
+                # if la_tok not in last_node.final.follow:
+                else:
                     # illegal
                     la_role, la_tok = get_next_token()
         continue
