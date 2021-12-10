@@ -288,7 +288,7 @@ def reformat(str):
 
     for i in range(len(strList)-1, -1, -1):
         for j in range(len(strList[i])):
-            print(len(strList), len(strList[i]), i, j)
+            #print(len(strList), len(strList[i]), i, j)
             if i == len(strList)-1:
                 if strList[i][j] == '│':
                     k = i
@@ -296,6 +296,8 @@ def reformat(str):
                         strList[k][j] = ' '
                         k -= 1
                     strList[k][j] = '└'
+                elif strList[i][j] == '├':
+                    strList[i][j] = '└'
 
             elif strList[i][j] == '│' and ((j < len(strList[i+1]) and (strList[i+1][j] != '│' and strList[i+1][j] != '├'  and strList[i+1][j] != '└')) or (j >= len(strList[i+1]))):
                 k = i
@@ -307,7 +309,7 @@ def reformat(str):
 
     newList = [''.join(x) for x in strList]
     result = '\n'.join(newList)
-    print(result)
+    #print(result)
     return result
 
 def write_file_parser():
@@ -430,7 +432,7 @@ def get_next_token_parser():
     result = get_next_token()
     while result == '':
         result = get_next_token()
-    print(result)
+    #print(result)
     return result
 
 
@@ -571,7 +573,7 @@ flag_exit = 0
 la_role, la_tok = get_next_token_parser()
 parse_table_txt += 'Program\n'
 while traverse_list and not flag_exit:
-    print(la_tok, la_role)
+    #print(la_tok, la_role)
     match = False
     last_node = traverse_list.pop()
     if last_node.final:
@@ -683,7 +685,7 @@ while traverse_list and not flag_exit:
                     break
         if not flag and not flag_exit:
             # print illegal
-            print(lineCount)
+            #print(lineCount)
             syntax_error_txt += f'#{lineCount} : syntax error, illegal {la_role if la_role == "ID" or la_role == "NUM" else la_tok}\n'
             traverse_list.append(last_node)
             la_role, la_tok = get_next_token_parser()
