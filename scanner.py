@@ -1,31 +1,31 @@
 # Ali Sharifi 98109601
 # Hamid Reza Dehbashi 98105762
 
-def addToken(token, lexeme_temp, line):
+def addToken(token, lexeme_temp, line, tokens):
     """
     Gets a token and puts its lexeme on the corresponding line in the tokens table
     """
     if line not in tokens:
         tokens.update({line: []})
     tokens[line].append((token, lexeme_temp))
+    return tokens
 
-
-def addError(lexeme_temp, error, line):
+def addError(lexeme_temp, error, line, errors):
     """
     Gets an error and puts its lexeme on the corresponding line in the error table
     """
     if line not in errors:
         errors.update({line: []})
     errors[line].append((lexeme_temp, error))
+    return errors
 
-
-def addSymbolTable(lexeme_temp):
+def addSymbolTable(lexeme_temp, symbolTable):
     """
     Gets an id and puts it on the corresponding line in the symbol table
     """
     if lexeme_temp not in symbolTable:
         symbolTable.update({lexeme_temp: len(symbolTable) + 1})
-
+    return symbol_table
 
 def initSymbolTable():
     """
@@ -172,8 +172,9 @@ def initScanner():
     initSymbolTable()
     returnList = [table, lineCount, state, tokens, errors, symbolTable, keywords, openComment, startComment]
     return returnList
-f = open('input.txt', 'r')
-inputLine = f.read()
+
+#f = open('input.txt', 'r')
+#inputLine = f.read()
 
 
 def get_next_token(inputLine, table, lineCount, state, tokens, errors, symbolTable, keywords, openComment, startComment, i):
@@ -204,48 +205,48 @@ def get_next_token(inputLine, table, lineCount, state, tokens, errors, symbolTab
                     lineCount -= 1
                 lexeme = lexeme[0: len(lexeme) - 1]
                 if lexeme in keywords:
-                    addToken("KEYWORD", lexeme, lineCount)
-                    ret = 'KEYWORD', lexeme
+                    tokens = addToken("KEYWORD", lexeme, lineCount, tokens)
+                    ret = ('KEYWORD', lexeme)
                 else:
-                    addToken("ID", lexeme, lineCount)
-                    ret = 'ID', lexeme
-                    addSymbolTable(lexeme)
+                    tokens = addToken("ID", lexeme, lineCount, tokens)
+                    ret = ('ID', lexeme)
+                    symbolTable = addSymbolTable(lexeme, symbolTable)
                 i -= 1
 
             elif state == "ID_KEY_ACC":
                 if lexeme in keywords:
-                    addToken("KEYWORD", lexeme, lineCount)
-                    ret = 'KEYWORD', lexeme
+                    tokens = addToken("KEYWORD", lexeme, lineCount, tokens)
+                    ret = ('KEYWORD', lexeme)
                 else:
-                    addToken("ID", lexeme, lineCount)
-                    ret = 'ID', lexeme
-                    addSymbolTable(lexeme)
+                    tokens = addToken("ID", lexeme, lineCount, tokens)
+                    ret = ('ID', lexeme)
+                    symbolTable = addSymbolTable(lexeme, symbolTable)
 
             elif state == "invalid_input":
-                addError(lexeme, "Invalid input", lineCount)
+                errors = addError(lexeme, "Invalid input", lineCount, errors)
 
             elif state == "invalid_input_*":
                 if inputLine[i] == '\n':
                     lineCount -= 1
-                addError(lexeme[0: len(lexeme) - 1], "Invalid input", lineCount)
+                errors = addError(lexeme[0: len(lexeme) - 1], "Invalid input", lineCount, errors)
                 i -= 1
 
             elif state == "invalid_number":
-                addError(lexeme, "Invalid number", lineCount)
+                errors = addError(lexeme, "Invalid number", lineCount, errors)
 
             elif state == "NUM_ACC_*":
                 if inputLine[i] == '\n':
                     lineCount -= 1
-                addToken("NUM", lexeme[0: len(lexeme) - 1], lineCount)
-                ret = 'NUM', lexeme[0:len(lexeme) - 1]
+                tokens = addToken("NUM", lexeme[0: len(lexeme) - 1], lineCount, tokens)
+                ret = ('NUM', lexeme[0:len(lexeme) - 1])
                 i -= 1
 
             elif state == "NUM_ACC":
-                addToken("NUM", lexeme, lineCount)
-                ret = 'NUM', lexeme
+                tokens = addToken("NUM", lexeme, lineCount, tokens)
+                ret = ('NUM', lexeme)
 
             elif state == "unmatched_comment":
-                addError(lexeme, "Unmatched comment", lineCount)
+                errors = addError(lexeme, "Unmatched comment", lineCount, errors)
 
             elif state == "COM_1_ACC":
                 openComment = False
@@ -257,26 +258,26 @@ def get_next_token(inputLine, table, lineCount, state, tokens, errors, symbolTab
                 openComment = False
                 if len(lexeme) > 7:
                     lexeme = lexeme[0:7] + "..."
-                addError(lexeme, "Unclosed comment", startComment)
+                errors = addError(lexeme, "Unclosed comment", startComment, errors)
 
             elif state == "symbol_1":
-                addToken("SYMBOL", lexeme, lineCount)
-                ret = 'SYMBOL', lexeme
+                tokens = addToken("SYMBOL", lexeme, lineCount, tokens)
+                ret = ('SYMBOL', lexeme)
 
             elif state == "symbol_3":
-                addToken("SYMBOL", lexeme, lineCount)
-                ret = 'SYMBOL', lexeme
+                tokens = addToken("SYMBOL", lexeme, lineCount, tokens)
+                ret = ('SYMBOL', lexeme)
 
             elif state == "symbol_4_*":
                 if inputLine[i] == '\n':
                     lineCount -= 1
-                addToken("SYMBOL", lexeme[0: len(lexeme) - 1], lineCount)
-                ret = 'SYMBOL', lexeme[0:len(lexeme) - 1]
+                tokens = addToken("SYMBOL", lexeme[0: len(lexeme) - 1], lineCount, tokens)
+                ret = ('SYMBOL', lexeme[0:len(lexeme) - 1])
                 i -= 1
 
             elif state == "symbol_4":
-                addToken("SYMBOL", lexeme, lineCount)
-                ret = 'SYMBOL', lexeme
+                tokens = addToken("SYMBOL", lexeme, lineCount, tokens)
+                ret = ('SYMBOL', lexeme)
 
             elif state == "whitespace":
                 temp = 0
@@ -291,40 +292,43 @@ def get_next_token(inputLine, table, lineCount, state, tokens, errors, symbolTab
             i += 1
             if flag == 0:
                 break
-        return ret, i
+        return ret, lineCount, state, tokens, errors, symbolTable, keywords, openComment, startComment, i
 
-# Reformat tokens in tokenTxt
-tokenTxt = ""
-for i in tokens:
-    tokenTxt += str(i).strip('"\'') + ".	"
-    for x in tokens[i]:
-        tokenTxt += "(" + str(x[0]).strip('"\'') + ", " + str(x[1]).strip('"\'') + ")" + " "
-    tokenTxt += "\n"
+def write_tokens(tokens):  # Reformat tokens in tokenTxt
+    tokenTxt = ""
+    for i in tokens:
+        tokenTxt += str(i).strip('"\'') + ".	"
+        for x in tokens[i]:
+            tokenTxt += "(" + str(x[0]).strip('"\'') + ", " + str(x[1]).strip('"\'') + ")" + " "
+        tokenTxt += "\n"
+    return tokenTxt
 
-# Reformat symbol table in symbolTxt
-symbolTxt = ""
-for i in symbolTable:
-    symbolTxt += str(symbolTable[i]).strip('"\'') + ".	" + str(i).strip('"\'')
-    symbolTxt += "\n"
+def write_symbolTable(symbolTable):# Reformat symbol table in symbolTxt
+    symbolTxt = ""
+    for i in symbolTable:
+        symbolTxt += str(symbolTable[i]).strip('"\'') + ".	" + str(i).strip('"\'')
+        symbolTxt += "\n"
+    return symbolTxt
 
-# Reformat errors in errorTxt
-errorTxt = ""
-for i in errors:
-    errorTxt += str(i).strip('"\'') + ".	"
-    for x in errors[i]:
-        errorTxt += "(" + str(x[0]).strip('"\'') + ", " + str(x[1]).strip('"\'') + ")" + " "
-    errorTxt += "\n"
-if len(errors) == 0:
-    errorTxt = "There is no lexical error."
+def wirte_lexical_errors(errors): # Reformat errors in errorTxt
+    errorTxt = ""
+    for i in errors:
+        errorTxt += str(i).strip('"\'') + ".	"
+        for x in errors[i]:
+            errorTxt += "(" + str(x[0]).strip('"\'') + ", " + str(x[1]).strip('"\'') + ")" + " "
+        errorTxt += "\n"
+    if len(errors) == 0:
+        errorTxt = "There is no lexical error."
 
-# Write in file
-with open("lexical_errors.txt", "w") as lexical:
-    lexical.write(errorTxt)
+def write_file(errorTxt, tokenTxt, symbolTxt):
+    # Write in file
+    with open("lexical_errors.txt", "w") as lexical:
+        lexical.write(errorTxt)
 
-with open("tokens.txt", "w") as tokenFile:
-    tokenFile.write(tokenTxt)
+    with open("tokens.txt", "w") as tokenFile:
+        tokenFile.write(tokenTxt)
 
-with open("symbol_table.txt", "w") as symbolFile:
-    symbolFile.write(symbolTxt)
+    with open("symbol_table.txt", "w") as symbolFile:
+        symbolFile.write(symbolTxt)
 
 
