@@ -40,7 +40,7 @@ def getNonTermByName(name):
 
 
 def get_next_token():
-    role, token = scanner.get_next_token()
+    role, token = compiler.get_next_token()
     """returns (role, token)"""
     pass
 
@@ -129,12 +129,18 @@ def initialize_nodes():
             lastNode.to.update({rule[len(rule) - 1]: finalNode})
 
 
-def initialize_first_follow_nodes():
+def initialize_parser():
     initialize_nodes()
     initialize_first()
     initialize_follow()
     parse_table_txt = ""
-    return Node.nodes, NonTerminal.nonTerminals, parse_table_txt
+    syntax_error_txt = ""
+    traverse_list = []
+    middle_edge = '├── '
+    last_edge = '└── '
+    cont_edges = '│   '
+    space = '    '
+    return Node.nodes, NonTerminal.nonTerminals, parse_table_txt, syntax_error_txt, traverse_list, middle_edge, last_edge, cont_edges, space
 """
 def write_file():
     f = open('parse_table.txt', mode='w+')
@@ -201,17 +207,12 @@ def calc_line_first_part(traverse_list, cont_edges, space):
     #pass
     return line_first_part
 
-def run_parser():
+def run_parser(nodes, nonTerminals, parse_table_txt, syntax_error_txt, traverse_list, middle_edge, last_edge, cont_edges, space):
     la_role, la_tok = get_next_token()
     # node with id 0?
 
-    f.write('Program\n')
-    traverse_list = []
-    middle_edge = '├── '
-    last_edge = '└── '
-    cont_edges = '│   '
-    space = '    '
-
+    #f.write('Program\n')
+    parse_table_txt += 'Program\n'
     # while look_ahead != '$':
     while traverse_list:
         match = False
@@ -237,39 +238,48 @@ def run_parser():
             if res:
                 if la_role == 'NUM' or la_role == 'ID':
                     if la_role in res.first:
-                        write_nonterm(node, res, edge_type)
+                        parse_table_txt, traverse_list = write_nonterm(node, res, edge_type, parse_table_txt,
+                                                                       traverse_list, cont_edges, space)
                         match = True
                         break
                     elif 'EPSILON' in res.first and la_role in res.follow:
-                        write_nonterm(node, res, edge_type)
+                        parse_table_txt, traverse_list = write_nonterm(node, res, edge_type, parse_table_txt,
+                                                                       traverse_list, cont_edges, space)
                         match = True
                         break
                 else:
                     if la_tok in res.first:
-                        write_nonterm(node, res, edge_type)
+                        parse_table_txt, traverse_list = write_nonterm(node, res, edge_type, parse_table_txt,
+                                                                       traverse_list, cont_edges, space)
                         match = True
                         break
                     elif 'EPSILON' in res.first and la_tok in res.follow:
-                        write_nonterm(node, res, edge_type)
+                        parse_table_txt, traverse_list = write_nonterm(node, res, edge_type, parse_table_txt,
+                                                                       traverse_list, cont_edges, space)
                         match = True
                         break
             else:
                 if la_role == 'NUM' or la_role == 'ID':
                     if la_role == term_nonterm:
-                        write_term(node, la_role, la_tok, edge_type)
+                        parse_table_txt, traverse_list = write_term(node, la_role, la_tok, edge_type, parse_table_txt,
+                                                                    traverse_list, cont_edges, space)
                         match = True
                         break
                     elif term_nonterm == 'EPSILON' and la_role in node.final.follow:
-                        write_epsilon(node, edge_type)
+                        parse_table_txt, traverse_list = write_epsilon(node, edge_type, parse_table_txt, traverse_list,
+                                                                       cont_edges, space)
                         match = True
                         break
                 else:
                     if la_tok == term_nonterm:
-                        write_term(node, la_role, la_tok, edge_type)
+                        parse_table_txt, traverse_list = write_term(node, la_role, la_tok, edge_type, parse_table_txt,
+                                                                    traverse_list, cont_edges, space)
                         match = True
                         break
                     elif term_nonterm == 'EPSILON' and la_tok in node.final.follow:
-                        write_epsilon(node, edge_type)
+                        parse_table_txt, traverse_list = write_epsilon(node, edge_type, parse_table_txt, traverse_list,
+                                                                       cont_edges, space)
+
                         match = True
                         break
         if match:
@@ -299,6 +309,7 @@ def run_parser():
             else:
                 # print missing
                 traverse_list.append(node)
+    return parse_table_txt, syntax_error_txt, traverse_list
 
 #e.close()
 #f.close()

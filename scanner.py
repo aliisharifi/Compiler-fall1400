@@ -175,11 +175,9 @@ def initScanner():
 f = open('input.txt', 'r')
 inputLine = f.read()
 
-i = 0
 
-def get_next_token():
+def get_next_token(inputLine, table, lineCount, state, tokens, errors, symbolTable, keywords, openComment, startComment, i):
     ret = ''
-    global i
     if i == len(inputLine):
         return '$', '$'
     while i < len(inputLine):
@@ -293,7 +291,7 @@ def get_next_token():
             i += 1
             if flag == 0:
                 break
-        return ret
+        return ret, i
 
 # Reformat tokens in tokenTxt
 tokenTxt = ""
