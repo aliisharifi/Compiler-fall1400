@@ -314,11 +314,11 @@ def write_file_parser():
     global parse_table_txt, syntax_error_txt
     #print(parse_table_txt)
     parse_table_txt = reformat(parse_table_txt)
-    with open('debug\\parse_table.txt', mode='w', encoding="utf-8") as f:
+    with open('parse_tree.txt', mode='w', encoding="utf-8") as f:
         f.write(parse_table_txt)
     if len(syntax_error_txt) == 0:
         syntax_error_txt = "There is no syntax error."
-    with open('debug\\syntax_errors_2.txt', mode='w', encoding="utf-8") as e:
+    with open('syntax_errors.txt', mode='w', encoding="utf-8") as e:
         e.write(syntax_error_txt)
 
 
@@ -564,7 +564,7 @@ openComment = False
 startComment = -1
 initSymbolTable(keywords)
 
-f = open('debug/input.txt', 'r')
+f = open('input.txt', 'r')
 inputLine = f.read()
 i = 0
 flag_exit = 0
