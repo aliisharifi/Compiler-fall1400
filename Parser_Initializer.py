@@ -20,6 +20,9 @@ class NonTerminal:
         NonTerminal.idLen += 1
         self.start = None
         self.final = None
+        self.first = []
+        self.follow =[]
+        self.predict = []
 
 
 grmstr = ""
@@ -98,6 +101,47 @@ for nonterm in nonTerminals:
             print(tempX.id)
         else:
             print(list(tempX.to.values())[0].id)
+
+with open('first.txt', 'r') as file:
+    frstTxt = file.readlines()
+
+terminals = frstTxt[0].split('\t')
+for i in range(len(terminals)):
+    if terminals[i] == 'Îµ\n':
+        terminals[i] = 'EPSILON'
+#for i in range(0, len(frstTxt[0])):
+print(terminals)
+for i in range(1, len(frstTxt)):
+    tempStr = frstTxt[i].split("\t")
+    nontermName = tempStr[0]
+    nonterm = getNonTermByName(nontermName)
+    if i == 2:
+        print(tempStr)
+    for j in range(1, len(tempStr)):
+        if tempStr[j] == '+' or tempStr[j] == '+\n':
+            nonterm.first.append(terminals[j-1])
+
+with open('follow.txt', 'r') as file:
+    fllwTxt = file.readlines()
+
+terminals = fllwTxt[0].split('\t')
+for i in range(len(terminals)):
+    if terminals[i] == 'â”¤\n':
+        terminals[i] = '@'
+#for i in range(0, len(frstTxt[0])):
+for i in range(1, len(fllwTxt)):
+    tempStr = fllwTxt[i].split("\t")
+    nontermName = tempStr[0]
+    nonterm = getNonTermByName(nontermName)
+    for j in range(1, len(tempStr)):
+        if tempStr[j] == '+' or tempStr[j] == '+\n':
+            nonterm.follow.append(terminals[j-1])
+
+for nonterm in nonTerminals:
+    print(nonterm.name, ":")
+    print("first: ", nonterm.first)
+    print("follow: ", nonterm.follow)
+
 
 """
 x = ""
