@@ -1,4 +1,6 @@
 import re
+
+import compiler
 import scanner
 
 i = 0

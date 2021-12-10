@@ -25,14 +25,15 @@ def addSymbolTable(lexeme_temp, symbolTable):
     """
     if lexeme_temp not in symbolTable:
         symbolTable.update({lexeme_temp: len(symbolTable) + 1})
-    return symbol_table
+    return symbolTable
 
-def initSymbolTable():
+def initSymbolTable(keywords, symbolTable):
     """
     Puts keywords on the beginning of the symbol table
     """
     for xX in keywords:
         symbolTable.update({xX: len(symbolTable) + 1})
+    return symbolTable
 
 def initScanner():
 
@@ -169,7 +170,7 @@ def initScanner():
     keywords = ["if", "else", "void", "int", "repeat", "break", "until", "return", "endif"]
     openComment = False
     startComment = -1
-    initSymbolTable()
+    symbolTable = initSymbolTable(keywords, symbolTable)
     returnList = [table, lineCount, state, tokens, errors, symbolTable, keywords, openComment, startComment]
     return returnList
 
