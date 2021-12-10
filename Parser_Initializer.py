@@ -6,6 +6,7 @@ class Node:
     def __init__(self):
         self.id = Node.idLen
         Node.idLen += 1
+        # pointer to nonterminal (if one exists :))
         self.start = None
         self.final = None
         self.to = {}
@@ -18,6 +19,7 @@ class NonTerminal:
         self.name = name
         self.id = NonTerminal.idLen
         NonTerminal.idLen += 1
+        # pointer to node
         self.start = None
         self.final = None
         self.first = []
