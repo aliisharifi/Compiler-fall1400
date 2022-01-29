@@ -1,9 +1,6 @@
 # Ali Sharifi 98109601
 # Hamid Reza Dehbashi 98105762
 
-import re
-
-
 class Node:
     idLen = 0
     nodes = []
@@ -83,16 +80,25 @@ def initialize_nodes():
     nonTerminals = []
     nameToId = {}
     for i in range(0, len(grmstr)):
-        x = re.search("(\\d+)\. (.+)", grmstr[i])
+        #x = re.search("(\\d+)\. (.+)", grmstr[i])
         #x = re.search(r"(\d+)\. (.+)", grmstr[i])
-        grmstr[i] = x.group(2)
-        x = re.search("(.+) -> (.+)", grmstr[i])
-        nonterm = NonTerminal(x.group(1))
-        nameToId.update({x.group(1): nonterm.id})
+        grmstr[i] = grmstr[i][grmstr[i].index('.') + 2:]
+        #x = re.search("(.+) -> (.+)", grmstr[i])
+        x = grmstr[i][:grmstr[i].index('>') - 2]
+        nonterm = NonTerminal(x)
+        nameToId.update({x: nonterm.id})
         nonTerminals.append(nonterm)
     for i in range(0, len(grmstr)):
-        x = re.search("(.+) -> (.+)", grmstr[i])
-        nonterm = getNonTermByName(x.group(1))
+        #x = re.search("(.+) -> (.+)", grmstr[i])
+        x = grmstr[i][:grmstr[i].index('>') - 2]
+        if i != len(grmstr) - 1:
+            y = grmstr[i][grmstr[i].index('>') + 2: len(grmstr[i]) - 1]
+        else:
+            y = grmstr[i][grmstr[i].index('>') + 2:]
+        #print(x, y)
+        nonterm = getNonTermByName(x)
+        #print(nonterm)
+        #print("...........................")
         startNode = Node()
         nodes.append(startNode)
         finalNode = Node()
@@ -101,7 +107,7 @@ def initialize_nodes():
         finalNode.final = nonterm
         nonterm.start = startNode
         nonterm.final = finalNode
-        rules_str = x.group(2)
+        rules_str = y
         rules = rules_str.split('|')
         for Rule in rules:
             lastNode = startNode
@@ -122,7 +128,6 @@ def initialize_nodes():
                 lastNode.to.update({rule[j]: temp})
                 lastNode = temp
             lastNode.to.update({rule[len(rule) - 1]: finalNode})
-
 
 def getNonTermByName(name):
     for nonterm in NonTerminal.nonTerminals:
@@ -305,11 +310,12 @@ def reformat(str):
                     strList[k][j] = ' '
                     k -= 1
                 strList[k][j] = '└'
+            elif strList[i][j] == '├' and ((j < len(strList[i+1]) and (strList[i+1][j] != '│' and strList[i+1][j] != '├'  and strList[i+1][j] != '└')) or (j >= len(strList[i+1]))):
+                strList[i][j] = '└'
 
 
     newList = [''.join(x) for x in strList]
     result = '\n'.join(newList)
-    #print(result)
     return result
 
 def write_file_parser():
@@ -430,7 +436,7 @@ def write_file_lexical():
 
 def get_next_token_parser():
     result = get_next_token()
-    while result == '':
+    while result == '' or result == None:
         result = get_next_token()
     #print(result)
     return result
@@ -439,7 +445,7 @@ def get_next_token_parser():
 def get_next_token():
     ret = ''
     global i, lineCount, openComment, startComment
-    if i == len(inputLine):
+    if i >= len(inputLine):
         return '$', '$'
     while i < len(inputLine):
         lexeme = ""
@@ -573,6 +579,7 @@ flag_exit = 0
 la_role, la_tok = get_next_token_parser()
 parse_table_txt += 'Program\n'
 while traverse_list and not flag_exit:
+    print(i)
     #print(la_tok, la_role)
     match = False
     last_node = traverse_list.pop()
