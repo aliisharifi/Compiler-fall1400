@@ -1,6 +1,7 @@
 # Ali Sharifi 98109601
 # Hamid Reza Dehbashi 98105762
 
+
 class Node:
     idLen = 0
     nodes = []
@@ -9,7 +10,6 @@ class Node:
         self.id = Node.idLen
         Node.idLen += 1
         Node.nodes.append(self)
-        # pointer to nonterminal (if one exists :))
         self.start = None
         self.final = None
         self.to = {}
@@ -24,7 +24,6 @@ class NonTerminal:
         self.id = NonTerminal.idLen
         NonTerminal.idLen += 1
         NonTerminal.nonTerminals.append(self)
-        # pointer to node
         self.start = None
         self.final = None
         self.first = []
@@ -40,14 +39,10 @@ def initialize_first():
     for i in range(len(terminals)):
         if terminals[i] == 'Îµ\n':
             terminals[i] = 'EPSILON'
-    # for i in range(0, len(frstTxt[0])):
-    #print(terminals)
     for i in range(1, len(frstTxt)):
         tempStr = frstTxt[i].split("\t")
         nontermName = tempStr[0]
         nonterm = getNonTermByName(nontermName)
-        #if i == 2:
-        #    print(tempStr)
         for j in range(1, len(tempStr)):
             if tempStr[j] == '+' or tempStr[j] == '+\n':
                 nonterm.first.append(terminals[j - 1])
@@ -61,7 +56,6 @@ def initialize_follow():
     for i in range(len(terminals)):
         if terminals[i] == 'â”¤\n':
             terminals[i] = '$'
-    # for i in range(0, len(frstTxt[0])):
     for i in range(1, len(fllwTxt)):
         tempStr = fllwTxt[i].split("\t")
         nontermName = tempStr[0]
@@ -80,25 +74,19 @@ def initialize_nodes():
     nonTerminals = []
     nameToId = {}
     for i in range(0, len(grmstr)):
-        #x = re.search("(\\d+)\. (.+)", grmstr[i])
-        #x = re.search(r"(\d+)\. (.+)", grmstr[i])
         grmstr[i] = grmstr[i][grmstr[i].index('.') + 2:]
-        #x = re.search("(.+) -> (.+)", grmstr[i])
         x = grmstr[i][:grmstr[i].index('>') - 2]
         nonterm = NonTerminal(x)
         nameToId.update({x: nonterm.id})
         nonTerminals.append(nonterm)
     for i in range(0, len(grmstr)):
-        #x = re.search("(.+) -> (.+)", grmstr[i])
         x = grmstr[i][:grmstr[i].index('>') - 2]
         if i != len(grmstr) - 1:
             y = grmstr[i][grmstr[i].index('>') + 2: len(grmstr[i]) - 1]
         else:
             y = grmstr[i][grmstr[i].index('>') + 2:]
-        #print(x, y)
+
         nonterm = getNonTermByName(x)
-        #print(nonterm)
-        #print("...........................")
         startNode = Node()
         nodes.append(startNode)
         finalNode = Node()
@@ -120,11 +108,9 @@ def initialize_nodes():
                 q += 1
             if len(rule) == 1:
                 startNode.to.update({rule[0]: finalNode})
-            # print(rule)
             for j in range(0, len(rule) - 1):
                 temp = Node()
                 nodes.append(temp)
-                #print(temp.id)
                 lastNode.to.update({rule[j]: temp})
                 lastNode = temp
             lastNode.to.update({rule[len(rule) - 1]: finalNode})
@@ -279,21 +265,10 @@ def reformat(str):
     strList = [list(x) for x in strLines]
     j = 0
     strList = strList[:-1]
-    """while j < len(strList[len(strList)-1]):
-        for i in range(len(strList)-1, -1, -1):
-            if strList[i][j] == '│':
-                strList[i][j] = ' '
-            elif strList[i][j] == '├':
-                strList[i][j] = '└'
-                break
-            else:
-                break
-        j += 1"""
 
 
     for i in range(len(strList)-1, -1, -1):
         for j in range(len(strList[i])):
-            #print(len(strList), len(strList[i]), i, j)
             if i == len(strList)-1:
                 if strList[i][j] == '│':
                     k = i
@@ -320,14 +295,13 @@ def reformat(str):
 
 def write_file_parser():
     global parse_table_txt, syntax_error_txt
-    #print(parse_table_txt)
     parse_table_txt = reformat(parse_table_txt)
     with open('parse_tree.txt', mode='w', encoding="utf-8") as f:
         f.write(parse_table_txt)
     if len(syntax_error_txt) == 0:
         syntax_error_txt = "There is no syntax error."
     with open('syntax_errors.txt', mode='w', encoding="utf-8") as e:
-        e.write(syntax_error_txt)
+        e.write(syntax_error_txt.replace('_', '-'))
 
 
 def write_epsilon(node_, edge_type_):
@@ -338,8 +312,6 @@ def write_epsilon(node_, edge_type_):
 
 def write_term(node_, la_role_, la_tok_, edge_type_):
     global parse_table_txt, traverse_list
-    # f.write(calc_line_first_part() + branch_edges + '(' + la_role_ + ', ' + la_tok_ + ')' + '\n')
-    # f.write(calc_line_first_part() + edge_type_ + '(' + la_role_ + ', ' + la_tok_ + ')' + '\n')
     if la_role_ == "$" and la_tok_ == "$":
         parse_table_txt += calc_line_first_part() + edge_type_ + "$" + '\n'
     else:
@@ -349,9 +321,6 @@ def write_term(node_, la_role_, la_tok_, edge_type_):
 
 def write_nonterm(node_, res_, edge_type_):
     global parse_table_txt, traverse_list
-    # f.write(calc_line_first_part() + branch_edges + res_.name + '\n')
-
-    # f.write(calc_line_first_part() + edge_type_ + res_.name + '\n')
     resName = res_.name.replace('_', '-')
     parse_table_txt += calc_line_first_part() + edge_type_ + resName + '\n'
     traverse_list.append(node_)
@@ -579,30 +548,10 @@ flag_exit = 0
 la_role, la_tok = get_next_token_parser()
 parse_table_txt += 'Program\n'
 while traverse_list and not flag_exit:
-    print(i)
-    #print(la_tok, la_role)
     match = False
     last_node = traverse_list.pop()
     if last_node.final:
         continue
-        """while True:
-            if la_role == 'NUM' or la_role == 'ID':
-                if la_role in last_node.final.follow:
-                    break
-                else:
-                    # illegal
-                    print(lineCount)
-                    syntax_error_txt += f'#{lineCount} : syntax error, illegal {la_role}\n'
-                    la_role, la_tok = get_next_token_parser()
-            else:
-                if la_tok in last_node.final.follow:
-                    break
-                else:
-                    # illegal
-                    print(lineCount)
-                    syntax_error_txt += f'#{lineCount} : syntax error, illegal {la_tok}\n'
-                    la_role, la_tok = get_next_token_parser()
-        continue"""
     for term_nonterm, node in last_node.to.items():
         res = getNonTermByName(term_nonterm)
         edge_type = last_edge if node.final else middle_edge
@@ -654,45 +603,30 @@ while traverse_list and not flag_exit:
             syntax_error_txt += f'#{lineCount} : syntax error, Unexpected EOF'
             flag_exit = True
             break
-        # asumption : last_node has only one edge
-        # term_nonterm, node = list(last_node.to).pop()
         flag, err_name = False, None
         for term_nonterm, node in last_node.to.items():
             res = getNonTermByName(term_nonterm)
             if res:
                 if la_role == 'NUM' or la_role == 'ID':
                     if la_role in res.follow:
-                        # print missing
                         syntax_error_txt += f'#{lineCount} : syntax error, missing {term_nonterm}\n'
                         traverse_list.append(node)
                         flag = True
                         err_name = term_nonterm
                         break
-                    # else:
-                    #     # print illegal
-                    #     traverse_list.append(last_node)
-                    #     la_role, la_tok = get_next_token_parser()
                 else:
                     if la_tok in res.follow:
-                        # print missing
                         syntax_error_txt += f'#{lineCount} : syntax error, missing {term_nonterm}\n'
                         traverse_list.append(node)
                         flag = True
                         break
-                    # else:
-                    #     # print illegal
-                    #     traverse_list.append(last_node)
-                    #     la_role, la_tok = get_next_token_parser()
             else:
                 if len(last_node.to) == 1:
-                    # print missing
                     syntax_error_txt += f'#{lineCount} : syntax error, missing {term_nonterm}\n'
                     traverse_list.append(node)
                     flag = True
                     break
         if not flag and not flag_exit:
-            # print illegal
-            #print(lineCount)
             syntax_error_txt += f'#{lineCount} : syntax error, illegal {la_role if la_role == "ID" or la_role == "NUM" else la_tok}\n'
             traverse_list.append(last_node)
             la_role, la_tok = get_next_token_parser()
