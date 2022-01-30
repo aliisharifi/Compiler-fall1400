@@ -6,5 +6,5 @@ Hamidreza Dehbashi
 
 Compiler project --  Spring 2021
 
-C- compiler
+C-minus compiler
 
