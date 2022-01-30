@@ -13,6 +13,8 @@ class Node:
         self.start = None
         self.final = None
         self.to = {}
+        self.to_ops = {}
+        self.ops = [[], []]
 
 
 class NonTerminal:
@@ -67,7 +69,7 @@ def initialize_follow():
 
 def initialize_nodes():
     grmstr = ""
-    with open('newGr2.txt', 'r') as file:
+    with open('newGr3.txt', 'r') as file:
         grmstr = file.readlines()
 
     nodes = []
@@ -87,6 +89,8 @@ def initialize_nodes():
             y = grmstr[i][grmstr[i].index('>') + 2:]
 
         nonterm = getNonTermByName(x)
+        if x == 'Param_prime':
+            ppp = 1
         startNode = Node()
         nodes.append(startNode)
         finalNode = Node()
@@ -98,6 +102,8 @@ def initialize_nodes():
         rules_str = y
         rules = rules_str.split('|')
         for Rule in rules:
+            dec = {}
+            gen = {}
             lastNode = startNode
             rule = Rule.split(" ")
             q = 0
@@ -106,14 +112,82 @@ def initialize_nodes():
                     rule.pop(q)
                     q -= 1
                 q += 1
+            last_n_idx = 0
+            for j in range(0, len(rule) + 1):
+                if j == len(rule):
+                    if last_n_idx not in dec:
+                        dec[last_n_idx] = []
+                    if last_n_idx not in gen:
+                        gen[last_n_idx] = []
+                elif rule[j][0] == '#':
+                    if last_n_idx not in gen:
+                        gen[last_n_idx] = []
+                    gen[last_n_idx].append(rule[j])
+                elif rule[j][0] == "%":
+                    if last_n_idx not in dec:
+                        dec[last_n_idx] = []
+                    dec[last_n_idx].append(rule[j])
+                else:
+                    if last_n_idx not in dec:
+                        dec[last_n_idx] = []
+                    if last_n_idx not in gen:
+                        gen[last_n_idx] = []
+                    last_n_idx += 1
+            tt = 0
+            while tt < len(rule):
+                if rule[tt][0] == '#':
+                    rule.pop(tt)
+                elif rule[tt][0] == "%":
+                    rule.pop(tt)
+                else:
+                    tt += 1
             if len(rule) == 1:
                 startNode.to.update({rule[0]: finalNode})
-            for j in range(0, len(rule) - 1):
-                temp = Node()
-                nodes.append(temp)
-                lastNode.to.update({rule[j]: temp})
-                lastNode = temp
-            lastNode.to.update({rule[len(rule) - 1]: finalNode})
+                startNode.to_ops.update({rule[0]: [dec[0], gen[0]]})
+            else:
+                for j in range(0, len(rule) - 1):
+                    temp = Node()
+                    nodes.append(temp)
+                    lastNode.to.update({rule[j]: temp})
+                    if lastNode == startNode:
+                        lastNode.to_ops.update({rule[j]: [dec[j], gen[j]]})
+                    else:
+                        if dec[j] != []:
+                            temp.ops[0] += dec[j]
+                        if gen[j] != []:
+                            temp.ops[1] += gen[j]
+                    lastNode = temp
+                lastNode.to.update({rule[len(rule) - 1]: finalNode})
+                if dec[len(rule) - 1] != []:
+                    lastNode.ops[0] += dec[len(rule) - 1]
+                if gen[len(rule) - 1] != []:
+                    lastNode.ops[1] += gen[len(rule) - 1]
+                if dec[len(rule)] != []:
+                    finalNode.ops[0] += dec[len(rule)]
+                if gen[len(rule)] != []:
+                    finalNode.ops[1] += gen[len(rule)]
+
+    #showNodes()
+
+
+def showNodes():
+    for nonTerm in NonTerminal.nonTerminals:
+        start = nonTerm.start
+        finish = nonTerm.final
+        for x in start.to:
+            y = start.to[x]
+            print(start.id, start.to_ops[x], x, y.id)
+            while True:
+                if y == finish:
+                    print(y.ops)
+                    print("......................")
+                    break
+                z = None
+                for t in y.to:
+                    z = y.to[t]
+                    print(y.ops, t, z.id)
+                y = z
+
 
 def getNonTermByName(name):
     for nonterm in NonTerminal.nonTerminals:
