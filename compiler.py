@@ -1,7 +1,6 @@
 # Ali Sharifi 98109601
 # Hamid Reza Dehbashi 98105762
 
-
 class Node:
     idLen = 0
     nodes = []
@@ -14,7 +13,8 @@ class Node:
         self.final = None
         self.to = {}
         self.to_ops = {}
-        self.ops = [[], []]
+        self.ops = []
+        self.from_ops = {}
 
 
 class NonTerminal:
@@ -89,8 +89,6 @@ def initialize_nodes():
             y = grmstr[i][grmstr[i].index('>') + 2:]
 
         nonterm = getNonTermByName(x)
-        if x == 'Param_prime':
-            ppp = 1
         startNode = Node()
         nodes.append(startNode)
         finalNode = Node()
@@ -103,7 +101,7 @@ def initialize_nodes():
         rules = rules_str.split('|')
         for Rule in rules:
             dec = {}
-            gen = {}
+            # gen = {}
             lastNode = startNode
             rule = Rule.split(" ")
             q = 0
@@ -117,23 +115,24 @@ def initialize_nodes():
                 if j == len(rule):
                     if last_n_idx not in dec:
                         dec[last_n_idx] = []
-                    if last_n_idx not in gen:
-                        gen[last_n_idx] = []
-                elif rule[j][0] == '#':
-                    if last_n_idx not in gen:
-                        gen[last_n_idx] = []
-                    gen[last_n_idx].append(rule[j])
-                elif rule[j][0] == "%":
+                    # if last_n_idx not in gen:
+                    #    gen[last_n_idx] = []
+                elif rule[j][0] == '#' or rule[j][0] == "%":
                     if last_n_idx not in dec:
                         dec[last_n_idx] = []
                     dec[last_n_idx].append(rule[j])
+                # elif rule[j][0] == "%":
+                #    if last_n_idx not in dec:
+                #        dec[last_n_idx] = []
+                #    dec[last_n_idx].append(rule[j])
                 else:
                     if last_n_idx not in dec:
                         dec[last_n_idx] = []
-                    if last_n_idx not in gen:
-                        gen[last_n_idx] = []
+                    # if last_n_idx not in gen:
+                    #    gen[last_n_idx] = []
                     last_n_idx += 1
             tt = 0
+            #print(dec[last_n_idx])
             while tt < len(rule):
                 if rule[tt][0] == '#':
                     rule.pop(tt)
@@ -141,31 +140,31 @@ def initialize_nodes():
                     rule.pop(tt)
                 else:
                     tt += 1
+            #print(rule, dec)
             if len(rule) == 1:
                 startNode.to.update({rule[0]: finalNode})
-                startNode.to_ops.update({rule[0]: [dec[0], gen[0]]})
+                startNode.to_ops.update({rule[0]: dec[0]})
+                if dec[len(rule)] != []:
+                    finalNode.from_ops[(startNode, rule[0])] = dec[len(rule)]
             else:
+                if lastNode == startNode:
+                    lastNode.to_ops.update({rule[0]: dec[0]})
                 for j in range(0, len(rule) - 1):
                     temp = Node()
                     nodes.append(temp)
                     lastNode.to.update({rule[j]: temp})
-                    if lastNode == startNode:
-                        lastNode.to_ops.update({rule[j]: [dec[j], gen[j]]})
-                    else:
-                        if dec[j] != []:
-                            temp.ops[0] += dec[j]
-                        if gen[j] != []:
-                            temp.ops[1] += gen[j]
+                    if dec[j+1] != []:
+                        temp.ops += dec[j+1]
                     lastNode = temp
                 lastNode.to.update({rule[len(rule) - 1]: finalNode})
-                if dec[len(rule) - 1] != []:
-                    lastNode.ops[0] += dec[len(rule) - 1]
-                if gen[len(rule) - 1] != []:
-                    lastNode.ops[1] += gen[len(rule) - 1]
+                #if dec[len(rule) - 1] != []:
+                #    lastNode.ops += dec[len(rule) - 1]
+                # if gen[len(rule) - 1] != []:
+                #    lastNode.ops[1] += gen[len(rule) - 1]
                 if dec[len(rule)] != []:
-                    finalNode.ops[0] += dec[len(rule)]
-                if gen[len(rule)] != []:
-                    finalNode.ops[1] += gen[len(rule)]
+                    finalNode.from_ops[(lastNode, rule[len(rule) - 1])] = dec[len(rule)]
+                # if gen[len(rule)] != []:
+                #    finalNode.ops[1] += gen[len(rule)]
 
     #showNodes()
 
@@ -177,15 +176,19 @@ def showNodes():
         for x in start.to:
             y = start.to[x]
             print(start.id, start.to_ops[x], x, y.id)
+            tt = x
             while True:
                 if y == finish:
-                    print(y.ops)
+                    for t in y.from_ops:
+                        if t[1] == tt:
+                            print(y.from_ops[t])
                     print("......................")
                     break
                 z = None
                 for t in y.to:
                     z = y.to[t]
-                    print(y.ops, t, z.id)
+                    print(y.id, y.ops, t, z.id)
+                    tt = t
                 y = z
 
 
@@ -340,10 +343,9 @@ def reformat(str):
     j = 0
     strList = strList[:-1]
 
-
-    for i in range(len(strList)-1, -1, -1):
+    for i in range(len(strList) - 1, -1, -1):
         for j in range(len(strList[i])):
-            if i == len(strList)-1:
+            if i == len(strList) - 1:
                 if strList[i][j] == '│':
                     k = i
                     while k >= 0 and strList[k][j] == '│':
@@ -353,19 +355,23 @@ def reformat(str):
                 elif strList[i][j] == '├':
                     strList[i][j] = '└'
 
-            elif strList[i][j] == '│' and ((j < len(strList[i+1]) and (strList[i+1][j] != '│' and strList[i+1][j] != '├'  and strList[i+1][j] != '└')) or (j >= len(strList[i+1]))):
+            elif strList[i][j] == '│' and ((j < len(strList[i + 1]) and (
+                    strList[i + 1][j] != '│' and strList[i + 1][j] != '├' and strList[i + 1][j] != '└')) or (
+                                                   j >= len(strList[i + 1]))):
                 k = i
                 while k >= 0 and strList[k][j] == '│':
                     strList[k][j] = ' '
                     k -= 1
                 strList[k][j] = '└'
-            elif strList[i][j] == '├' and ((j < len(strList[i+1]) and (strList[i+1][j] != '│' and strList[i+1][j] != '├'  and strList[i+1][j] != '└')) or (j >= len(strList[i+1]))):
+            elif strList[i][j] == '├' and ((j < len(strList[i + 1]) and (
+                    strList[i + 1][j] != '│' and strList[i + 1][j] != '├' and strList[i + 1][j] != '└')) or (
+                                                   j >= len(strList[i + 1]))):
                 strList[i][j] = '└'
-
 
     newList = [''.join(x) for x in strList]
     result = '\n'.join(newList)
     return result
+
 
 def write_file_parser():
     global parse_table_txt, syntax_error_txt
@@ -481,7 +487,7 @@ def get_next_token_parser():
     result = get_next_token()
     while result == '' or result == None:
         result = get_next_token()
-    #print(result)
+    # print(result)
     return result
 
 
@@ -604,6 +610,270 @@ def get_next_token():
         return ret
 
 
+stack = []
+symbTable = []
+lastSymbElem = None
+curAddrCode = 0
+curAddrData = 500
+curAddrTemp = 1000
+curScope = 0
+breakPoints = []
+genCode = []
+
+for i in range(100000):
+    genCode.append("")
+
+
+def getTemp():
+    global curAddrTemp
+    curAddrTemp += 4
+    return curAddrTemp - 4
+
+
+def findLastFuncSymbol():
+    for i in range(len(symbTable) - 1, -1, -1):
+        if symbTable[i]['FuncArrVar'] == 'Func':
+            return i
+    return -1
+
+def getIdxByAddr(a):
+    for i in range(len(symbTable) - 1, -1, -1):
+        if symbTable[i]['Address'] == a:
+            return i
+    return -1
+
+
+def findAddrSymb(inp):
+    for i in range(len(symbTable) - 1, -1, -1):
+        if symbTable[i]['Lexeme'] == inp:
+            return i
+    return -1
+
+
+def codeGen(action, input):
+    print(action, input)
+    print("stack:", stack)
+    global lastSymbElem, curAddrCode, curAddrTemp, curAddrData, curScope
+    if action == '%defAddr':
+        if lastSymbElem is None:
+            lastSymbElem = {'Address': curAddrData, 'Type': None, 'Lexeme': None, 'FuncArrVar': None, 'Scope': None,
+                            'CodeAddress': None}
+            symbTable.append(lastSymbElem)
+        else:
+            if lastSymbElem['Address'] is not None:
+                lastSymbElem = {'Address': curAddrData, 'Type': None, 'Lexeme': None, 'FuncArrVar': None, 'Scope': None,
+                                'CodeAddress': None}
+                symbTable.append(lastSymbElem)
+            else:
+                lastSymbElem['Address'] = curAddrData
+                symbTable[len(symbTable) - 1] = lastSymbElem
+    elif action == '%defScope':
+        lastSymbElem['Scope'] = curScope
+        symbTable[len(symbTable) - 1] = lastSymbElem
+    elif action == '%defType':
+        lastSymbElem['Type'] = input
+        symbTable[len(symbTable) - 1] = lastSymbElem
+    elif action == '%defLex':
+        lastSymbElem['Lexeme'] = input
+        symbTable[len(symbTable) - 1] = lastSymbElem
+    elif action == '%updateAddr1':
+        curAddrData += 4
+    # elif action == '%args1':
+    #
+    elif action == '%varSpec':
+        lastSymbElem['FuncArrVar'] = 'Var'
+        symbTable[len(symbTable) - 1] = lastSymbElem
+    elif action == '%updateAddr2':
+        curAddrData += int(input)
+    # elif action == '%args2':
+    #
+    elif action == '%arrSpec':
+        lastSymbElem['FuncArrVar'] = 'Arr'
+        symbTable[len(symbTable) - 1] = lastSymbElem
+    elif action == '%funcSpec':
+        lastSymbElem['FuncArrVar'] = 'Func'
+        symbTable[len(symbTable) - 1] = lastSymbElem
+    elif action == '%returnAddrVal':
+        curAddrData += 12
+    elif action == '%codeAddr':
+        lastSymbElem['CodeAddress'] = curAddrCode
+        symbTable[len(symbTable) - 1] = lastSymbElem
+    elif action == '%arrPointerSpec':
+        lastSymbElem['Type'] += "*"
+        symbTable[len(symbTable) - 1] = lastSymbElem
+    elif action == '%updateScopeInc':
+        curScope += 1
+    elif action == '%updateScopeDec':
+        curScope -= 1
+
+    elif action == '#breakPoint':
+        breakPoints.append(curAddrCode + 1)
+        code = "(JP, " + str(curAddrCode + 2) + ", , )"
+        genCode[curAddrCode] = code
+        curAddrCode += 2
+
+    elif action == '#jumpToEnd':
+        code = "(JP, " + str(breakPoints[-1]) + ", , )"
+        genCode[curAddrCode] = code
+        curAddrCode += 1
+
+    elif action == '#saveIf':
+        stack.append(curAddrCode)
+        curAddrCode += 1
+
+    elif action == '#jif':
+        code = "(JPF, " + str(int(stack[len(stack) - 2])) + ", " + str(curAddrCode + 1) + ", )"
+        genCode[int(stack[len(stack) - 1])] = code
+        stack.pop()
+        stack.pop()
+        stack.append(curAddrCode)
+        curAddrCode += 1
+
+    elif action == '#jp':
+        code = "(JP, " + str(curAddrCode) + ", , )"
+        genCode[int(stack[len(stack) - 1])] = code
+        stack.pop()
+
+    elif action == '#jpf':
+        code = "(JPF, " + str(int(stack[len(stack) - 2])) + ", " + str(curAddrCode) + ", )"
+        genCode[int(stack[len(stack) - 1])] = code
+        stack.pop()
+        stack.pop()
+
+    elif action == '#li':
+        stack.append(curAddrCode)
+
+    elif action == '#ji':
+        code = "(JPF, " + str(int(stack[len(stack) - 1])) + ", " + str(int(stack[len(stack) - 2])) + ", )"
+        genCode[curAddrCode] = code
+        curAddrCode += 1
+        stack.pop()
+        stack.pop()
+
+    elif action == '#eoi':
+        code = "(JP, " + str(curAddrCode) + ", , )"
+        genCode[breakPoints[-1]] = code
+        breakPoints.pop()
+
+    elif action == '#jr':
+        returnAddr = symbTable[findLastFuncSymbol()]['Address'] + 4
+        code = "(JP, " + str(returnAddr) + ", , )"
+        genCode[curAddrCode] = code
+        curAddrCode += 1
+
+    elif action == '#assR':
+        returnVal = symbTable[findLastFuncSymbol()]['Address'] + 8
+        code = '(ASSIGN, ' + str(stack[-1]) + ", " + str(returnVal) + ', )'
+        stack.pop()
+        genCode[curAddrCode] = code
+        curAddrCode += 1
+
+    elif action == '#pidAddr':
+        p = symbTable[findAddrSymb(input)]['Address']
+        stack.append(p)
+
+    # elif action == '#readAddr':
+    #
+    #
+    elif action == '#assign':
+        code = '(ASSIGN, ' + str(stack[-1]) + ", " + str(stack[-2]) + ', )'
+        stack.pop()
+        stack.pop()
+        genCode[curAddrCode] = code
+        curAddrCode += 1
+
+
+    elif action == '#arrIdx':
+        temp = getTemp()
+        if symbTable[getIdxByAddr(stack[-1])]["Type"][-1] == "*":
+            code = "(ADD, @" + str(stack[-1]) + ", " + '#' + str(stack[-2]) + ", " + str(temp) + ")"
+        else:
+            code = "(ADD, " + str(stack[-1]) + ", " + '#' + str(stack[-2]) + ", " + str(temp) + ")"
+        genCode[curAddrCode] = code
+        stack.pop()
+        stack.pop()
+        stack.append(temp)
+        curAddrCode += 1
+
+    elif action == '#compare':
+        temp = getTemp()
+        if stack[-2] == '<':
+            code = "(LT, " + str(stack[-3]) + ", " + str(stack[-1]) + ", " + str(temp) + ")"
+        elif stack[-2] == '==':
+            code = "(EQ, " + str(stack[-3]) + ", " + str(stack[-1]) + ", " + str(temp) + ")"
+        genCode[curAddrCode] = code
+        curAddrCode += 1
+        stack.pop()
+        stack.pop()
+        stack.append(temp)
+    elif action == '#mult':
+        temp = getTemp()
+        code = '(MULT, ' + str(stack[-1]) + ', ' + str(stack[-2]) + ', ' + str(temp) + ')'
+        genCode[curAddrCode] = code
+        curAddrCode += 1
+        stack.pop()
+        stack.pop()
+        stack.append(temp)
+    elif action == '#addMinus':
+        temp = getTemp()
+        code = ""
+        if stack[-2] == '+':
+            code = "(ADD, " + str(stack[-1]) + ", " + str(stack[-3]) + ", " + str(temp) + ")"
+        elif stack[-2] == '-':
+            code = "(SUB, " + str(stack[-3]) + ", " + str(stack[-1]) + ", " + str(temp) + ")"
+        genCode[curAddrCode] = code
+        curAddrCode += 1
+        stack.pop()
+        stack.pop()
+        stack.append(temp)
+    elif action == '#pushLess':
+        stack.append('<')
+
+    elif action == '#pushEq':
+        stack.append('==')
+
+    elif action == '#pushPlus':
+        stack.append('+')
+
+    elif action == '#pushMinus':
+        stack.append('-')
+
+    elif action == '#pushNum':
+        temp = getTemp()
+        code = '(ASSIGN, #' + input + ", " + str(temp) + ', )'
+        genCode[curAddrCode] = code
+        curAddrCode += 1
+        stack.append(temp)
+
+    elif action == '#jf':
+        returnAddr = stack[-1] + 4
+        code = '(ASSIGN, ' + str(curAddrCode + 2) + ", " + str(returnAddr) + ', )'
+        genCode[curAddrCode] = code
+        curAddrCode += 1
+
+        codeAddr = symbTable[getIdxByAddr(stack[-1])]['CodeAddress']
+        code = "(JP, " + str(codeAddr) + ", , )"
+        genCode[curAddrCode] = code
+        curAddrCode += 1
+
+    elif action == '#pushReturn':
+        returnVal = stack[-1] + 8
+        stack.pop()
+        stack.append(returnVal)
+
+    elif action == '#specDataAddrFunc':
+        stack.append(stack[-1] + 12)
+
+    elif action == '#pushAgain':
+        stack.append(stack[-1])
+
+    elif action == '#updateNextArgAddr':
+        stack[-1] = stack[-1] + 4
+
+    elif action == '#popAgain':
+        stack.pop()
+
+
 # Auxiliary variables
 lineCount = 1
 state = ""
@@ -619,10 +889,12 @@ f = open('input.txt', 'r')
 inputLine = f.read()
 i = 0
 flag_exit = 0
+last_la_tok = ""
 la_role, la_tok = get_next_token_parser()
 parse_table_txt += 'Program\n'
 while traverse_list and not flag_exit:
     match = False
+    print(last_la_tok)
     last_node = traverse_list.pop()
     if last_node.final:
         continue
@@ -652,6 +924,7 @@ while traverse_list and not flag_exit:
             if la_role == 'NUM' or la_role == 'ID':
                 if la_role == term_nonterm:
                     write_term(node, la_role, la_tok, edge_type)
+                    last_la_tok = la_tok
                     la_role, la_tok = get_next_token_parser()
                     match = True
                     break
@@ -662,15 +935,25 @@ while traverse_list and not flag_exit:
             else:
                 if la_tok == term_nonterm:
                     write_term(node, la_role, la_tok, edge_type)
+                    last_la_tok = la_tok
                     la_role, la_tok = get_next_token_parser()
                     match = True
                     break
                 elif term_nonterm == 'EPSILON' and la_tok in node.final.follow:
                     write_epsilon(node, edge_type)
-
                     match = True
                     break
     if match:
+        if term_nonterm in last_node.to_ops:
+            for x in last_node.to_ops[term_nonterm]:
+                codeGen(x, last_la_tok)
+        elif term_nonterm in last_node.from_ops:
+            for x in last_node.from_ops[term_nonterm]:
+                codeGen(x, last_la_tok)
+        elif last_node.ops != []:
+            for x in last_node.ops:
+                codeGen(x, last_la_tok)
+
         match = False
     else:
         if la_tok == "$":
@@ -705,7 +988,6 @@ while traverse_list and not flag_exit:
             traverse_list.append(last_node)
             la_role, la_tok = get_next_token_parser()
             flag = False
-
 
 write_file_lexical()
 write_file_parser()
