@@ -682,8 +682,11 @@ def findAddrSymb(inp):
 
 def write_generated_code():
     finalCode = ""
+    count = 0
     for line in genCode:
-        finalCode += line + '\n'
+        if line != "":
+            finalCode += str(count) + '\t' + line + '\n'
+            count += 1
     finalCode = finalCode[:-1]
     with open("generated_code.txt", "w") as gen_code:
         gen_code.write(finalCode)
