@@ -39,7 +39,7 @@ def initialize_first():
 
     terminals = frstTxt[0].split('\t')
     for i in range(len(terminals)):
-        if terminals[i] == 'Îµ\n':
+        if terminals[i] == 'ε\n':
             terminals[i] = 'EPSILON'
     for i in range(1, len(frstTxt)):
         tempStr = frstTxt[i].split("\t")
@@ -56,7 +56,7 @@ def initialize_follow():
 
     terminals = fllwTxt[0].split('\t')
     for i in range(len(terminals)):
-        if terminals[i] == 'â”¤\n':
+        if terminals[i] == '┤\n':
             terminals[i] = '$'
     for i in range(1, len(fllwTxt)):
         tempStr = fllwTxt[i].split("\t")
@@ -673,7 +673,7 @@ def findLastFuncSymbolScope(sc):
         if symbTable[i]["Scope"] > temp:
             continue
         if symbTable[i]["Scope"] < temp:
-            temp -= 1
+            temp = symbTable[i]["Scope"]
         if symbTable[i]['FuncArrVar'] == 'Func' and temp >= symbTable[i]["Scope"]:
             return i
     return -1
@@ -692,7 +692,7 @@ def findArrLex(w, sc):
         if symbTable[i]["Scope"] > temp:
             continue
         if symbTable[i]["Scope"] < temp:
-            temp -= 1
+            temp = symbTable[i]["Scope"]
         if symbTable[i]['FuncArrVar'] == 'Arr' and temp >= symbTable[i]["Scope"] and w == symbTable[i]["Lexeme"]:
             return i
     return -1
@@ -704,7 +704,7 @@ def findLex(w, sc):
         if symbTable[i]["Scope"] > temp:
             continue
         if symbTable[i]["Scope"] < temp:
-            temp -= 1
+            temp = symbTable[i]["Scope"]
         if temp >= symbTable[i]["Scope"] and w == symbTable[i]["Lexeme"]:
             return i
     return -1
@@ -827,10 +827,11 @@ def codeGen(action, input):
         stack.append(curAddrCode)
 
     elif action == '#ji':
-        code = "(JPF, " + str(int(stack[len(stack) - 1])) + ", " + str(curAddrCode + 2) + ", )"
-        genCode[curAddrCode] = code
-        curAddrCode += 1
-        code = "(JP, " + str(int(stack[len(stack) - 2])) + ", , )"
+        #code = "(JPF, " + str(int(stack[len(stack) - 1])) + ", " + str(curAddrCode + 2) + ", )"
+        #genCode[curAddrCode] = code
+        #curAddrCode += 1
+        #code = "(JP, " + str(int(stack[len(stack) - 2])) + ", , )"
+        code = "(JPF, " + str(int(stack[-1])) + ", " + str(int(stack[-2])) + ", )"
         genCode[curAddrCode] = code
         curAddrCode += 1
         stack.pop()
@@ -877,7 +878,10 @@ def codeGen(action, input):
             genCode[curAddrCode] = code
             curAddrCode += 1"""
         lex = symbTable[getIdxByAddr(stack[-1])]["Lexeme"]
-        stack[-1] = symbTable[findLex(lex, curScope)]["Address"]
+        #print(stack[-1])
+        if type(stack[-1]) == int and stack[-1] < 1000:
+            #print(lex, stack[-2], stack[-1], symbTable[findLex(lex, curScope)]["Address"])
+            stack[-1] = symbTable[findLex(lex, curScope)]["Address"]
         #print(stack[-1])
         if symbTable[getIdxByAddr(stack[-1])]["Type"][-1] != "*" and symbTable[getIdxByAddr(stack[-1])]["FuncArrVar"] == 'Arr':
             code = '(ASSIGN, #' + str(stack[-1]) + ", " + str(stack[-2]) + ', )'
@@ -901,14 +905,16 @@ def codeGen(action, input):
 
     elif action == '#arrIdx':
         lex = symbTable[getIdxByAddr(stack[-2])]["Lexeme"]
-        stack[-2] = symbTable[findArrLex(lex, curScope)]["Address"]
-        #print(".............................................................",
-        #      stack[-2])
+        if findArrLex(lex, curScope) != -1:
+            stack[-2] = symbTable[findArrLex(lex, curScope)]["Address"]
+            #print(".............................................................",
+            #      stack[-2], lex)
         temp = getTemp()
         code = '(MULT, ' + '#4' + ', ' + str(stack[-1]) + ', ' + str(temp) + ')'
         genCode[curAddrCode] = code
         curAddrCode += 1
         temp2 = getTemp()
+        #print(stack)
         if symbTable[getIdxByAddr(stack[-2])]["Type"][-1] == "*":
             code = "(ADD, " + str(stack[-2]) + ", " + str(temp) + ", " + str(temp2) + ")"
         else:
