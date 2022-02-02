@@ -13,15 +13,15 @@
 13. Compound_stmt -> { %updateScopeInc Declaration_list Statement_list } %updateScopeDec
 14. Statement_list -> Statement Statement_list | EPSILON
 15. Statement -> Expression_stmt | Compound_stmt | Selection_stmt | Iteration_stmt | Return_stmt
-16. Expression_stmt -> Expression ; | break ; #jumpToEnd | ;
+16. Expression_stmt -> #pushLen Expression ; #popIf | break ; #jumpToEnd | ;
 17. Selection_stmt -> if ( Expression ) #saveIf Statement Else_stmt
 18. Else_stmt -> endif #jpf | else #jif Statement endif #jp
 19. Iteration_stmt -> #breakPoint repeat #li Statement until ( Expression ) #ji #eoi
 20. Return_stmt -> return Return_stmt_prime #jr
 21. Return_stmt_prime -> ; | Expression ; #assR
 22. Expression -> Simple_expression_zegond | #pidAddr ID B
-23. B -> #readAddr = Expression #assign | [ Expression ] #arrIdx #readAddr H | Simple_expression_prime
-24. H -> = Expression #assign | G D C
+23. B -> #readAddr = #pushAgain Expression #assign | [ Expression ] #arrIdx #readAddr H | Simple_expression_prime
+24. H -> = #pushAgain Expression #assign | G D C
 25. Simple_expression_zegond -> Additive_expression_zegond C
 26. Simple_expression_prime -> Additive_expression_prime C
 27. C -> Relop Additive_expression #compare | EPSILON

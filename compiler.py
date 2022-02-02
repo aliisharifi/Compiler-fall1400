@@ -166,7 +166,7 @@ def initialize_nodes():
                 # if gen[len(rule)] != []:
                 #    finalNode.ops[1] += gen[len(rule)]
 
-    showNodes()
+    #showNodes()
 
 
 def showNodes():
@@ -636,10 +636,9 @@ curScope = 0
 breakPoints = []
 genCode = []
 
-for i in range(100):
+for i in range(500):
     genCode.append("")
 
-genCode[0] = "(JP, 3, , )"
 genCode[1] = "(PRINT, 512, , )"
 genCode[2] = "(JP, @504, , )"
 
@@ -683,12 +682,13 @@ def findAddrSymb(inp):
 def write_generated_code():
     finalCode = ""
     count = 0
+    genCode[0] = "(JP, " + str(symbTable[findAddrSymb("main")]['CodeAddress']) + ", , )"
     for line in genCode:
         if line != "":
             finalCode += str(count) + '\t' + line + '\n'
             count += 1
     finalCode = finalCode[:-1]
-    with open("generated_code.txt", "w") as gen_code:
+    with open("output.txt", "w") as gen_code:
         gen_code.write(finalCode)
 
 def codeGen(action, input):
@@ -838,14 +838,18 @@ def codeGen(action, input):
 
     elif action == '#arrIdx':
         temp = getTemp()
+        code = '(MULT, ' + '#4' + ', ' + str(stack[-1]) + ', ' + str(temp) + ')'
+        genCode[curAddrCode] = code
+        curAddrCode += 1
+        temp2 = getTemp()
         if symbTable[getIdxByAddr(stack[-1])]["Type"][-1] == "*":
-            code = "(ADD, " + str(stack[-1]) + ", " + '#' + str(stack[-2] * 4) + ", " + str(temp) + ")"
+            code = "(ADD, " + str(stack[-2]) + ", " + str(temp) + ", " + str(temp2) + ")"
         else:
-            code = "(ADD, #" + str(stack[-1]) + ", " + '#' + str(stack[-2] * 4) + ", " + str(temp) + ")"
+            code = "(ADD, #" + str(stack[-2]) + ", " + str(temp) + ", " + str(temp2) + ")"
         genCode[curAddrCode] = code
         stack.pop()
         stack.pop()
-        stack.append('@' + str(temp))
+        stack.append('@' + str(temp2))
         curAddrCode += 1
 
     elif action == '#compare':
@@ -905,7 +909,7 @@ def codeGen(action, input):
             returnAddr = int(stack[-1][1:]) + 4
         else:
             returnAddr = int(stack[-1]) + 4
-        code = '(ASSIGN, ' + str(curAddrCode + 2) + ", " + str(returnAddr) + ', )'
+        code = '(ASSIGN, #' + str(curAddrCode + 2) + ", " + str(returnAddr) + ', )'
         genCode[curAddrCode] = code
         curAddrCode += 1
 
@@ -919,18 +923,32 @@ def codeGen(action, input):
             returnVal = int(stack[-1][1:]) + 8
         else:
             returnVal = int(stack[-1]) + 8
-        stack.pop()
-        temp = getTemp()
-        code = '(ASSIGN, ' + str(returnVal) + ", " + str(temp) + ', )'
-        stack.append(temp)
-        genCode[curAddrCode] = code
-        curAddrCode += 1
+
+        if symbTable[getIdxByAddr(int(stack[-1]))]['Type'] == 'int':
+            stack.pop()
+            temp = getTemp()
+            code = '(ASSIGN, ' + str(returnVal) + ", " + str(temp) + ', )'
+            stack.append(temp)
+            genCode[curAddrCode] = code
+            curAddrCode += 1
+        else:
+            stack.pop()
 
     elif action == '#specDataAddrFunc':
         stack.append(stack[-1] + 12)
 
     elif action == '#pushAgain':
         stack.append(stack[-1])
+
+    elif action == '#pushLen':
+        stack.append(len(stack))
+    elif action == '#popIf':
+        #print("******:", len(stack), stack[-2] + 2)
+        if len(stack) >= 2 and len(stack) == stack[-2] + 2:
+            stack.pop()
+            stack.pop()
+        elif len(stack) == stack[-1] + 1:
+            stack.pop()
 
     elif action == '#updateNextArgAddr':
         stack[-1] = stack[-1] + 4
@@ -1001,7 +1019,7 @@ while traverse_list and not flag_exit:
         continue
 
     for term_nonterm, node in last_node.to.items():
-        print(la_tok)
+        #print(la_tok)
         last_term_nonterm = term_nonterm
         last_last_node = last_node
         res = getNonTermByName(term_nonterm)
