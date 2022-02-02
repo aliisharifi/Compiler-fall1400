@@ -117,7 +117,7 @@ def initialize_nodes():
                         dec[last_n_idx] = []
                     # if last_n_idx not in gen:
                     #    gen[last_n_idx] = []
-                elif rule[j][0] == '#' or rule[j][0] == "%":
+                elif rule[j][0] == '#' or rule[j][0] == "%" or rule[j][0] == "@":
                     if last_n_idx not in dec:
                         dec[last_n_idx] = []
                     dec[last_n_idx].append(rule[j])
@@ -136,7 +136,7 @@ def initialize_nodes():
             while tt < len(rule):
                 if rule[tt][0] == '#':
                     rule.pop(tt)
-                elif rule[tt][0] == "%":
+                elif rule[tt][0] == "%" or rule[tt][0] == "@":
                     rule.pop(tt)
                 else:
                     tt += 1
@@ -332,6 +332,8 @@ initialize_first()
 initialize_follow()
 parse_table_txt = ""
 syntax_error_txt = ""
+semantic_errors = []
+semantic_errors_shdw = []
 traverse_list = [Node.nodes[0]]
 shadow = [False]
 nonTermShadow = [""]
@@ -624,7 +626,7 @@ def get_next_token():
                 break
         return ret
 
-
+argsStack = []
 stackFuncScope = []
 stack = []
 symbTable = []
@@ -635,6 +637,9 @@ curAddrTemp = 1000
 curScope = 0
 breakPoints = []
 genCode = []
+semanticStack = []
+funcArgsCountStack = []
+overall_errors = []
 
 for i in range(500):
     genCode.append("")
@@ -686,6 +691,18 @@ def getIdxByAddr(a):
     return -1
 
 
+def findFuncLex(w, sc):
+    temp = sc
+    for i in range(len(symbTable) - 1, -1, -1):
+        if symbTable[i]["Scope"] > temp:
+            continue
+        if symbTable[i]["Scope"] < temp:
+            temp = symbTable[i]["Scope"]
+        if symbTable[i]['FuncArrVar'] == 'Func' and temp >= symbTable[i]["Scope"] and w == symbTable[i]["Lexeme"]:
+            return i
+    return -1
+
+
 def findArrLex(w, sc):
     temp = sc
     for i in range(len(symbTable) - 1, -1, -1):
@@ -693,7 +710,7 @@ def findArrLex(w, sc):
             continue
         if symbTable[i]["Scope"] < temp:
             temp = symbTable[i]["Scope"]
-        if symbTable[i]['FuncArrVar'] == 'Arr' and temp >= symbTable[i]["Scope"] and w == symbTable[i]["Lexeme"]:
+        if (symbTable[i]['FuncArrVar'] == 'Arr' or symbTable[i]['Type'] == 'int*') and temp >= symbTable[i]["Scope"] and w == symbTable[i]["Lexeme"]:
             return i
     return -1
 
@@ -717,6 +734,26 @@ def findAddrSymb(inp):
     return -1
 
 
+def write_semantic_errors():
+    sqq = ""
+    for line in semantic_errors:
+       sqq += line + '\n'
+    #sqq = sqq[:-1]
+
+    with open('semantic_errors.txt', 'w') as y:
+        if semantic_errors == []:
+            y.write("The input program is semantically correct")
+        else:
+            y.write(sqq)
+
+
+def chk(line, lex):
+    for l, x in overall_errors:
+        if line == l and x == lex:
+            return False
+    return True
+
+
 def write_generated_code():
     finalCode = ""
     count = 0
@@ -727,22 +764,27 @@ def write_generated_code():
             count += 1
     finalCode = finalCode[:-1]
     with open("output.txt", "w") as gen_code:
-        gen_code.write(finalCode)
+        if semantic_errors == []:
+            gen_code.write(finalCode)
+        else:
+            gen_code.write("The code has not been generated.")
 
 def codeGen(action, input):
-    #print(action, input)
-    #print("stack:", stack)
-
+    print(lineCount - 2, action, input)
+    print("stack:", stack)
+    print("semantic_stack:", semanticStack)
+    print("semantic_errors:", semantic_errors)
+    print(".......................................................")
     global lastSymbElem, curAddrCode, curAddrTemp, curAddrData, curScope
     if action == '%defAddr':
         if lastSymbElem is None:
             lastSymbElem = {'Address': curAddrData, 'Type': None, 'Lexeme': None, 'FuncArrVar': None, 'Scope': None,
-                            'CodeAddress': None}
+                            'CodeAddress': None, 'No.Args': 0}
             symbTable.append(lastSymbElem)
         else:
             if lastSymbElem['Address'] is not None:
                 lastSymbElem = {'Address': curAddrData, 'Type': None, 'Lexeme': None, 'FuncArrVar': None, 'Scope': None,
-                                'CodeAddress': None}
+                                'CodeAddress': None, 'No.Args': 0}
                 symbTable.append(lastSymbElem)
             else:
                 lastSymbElem['Address'] = curAddrData
@@ -796,32 +838,36 @@ def codeGen(action, input):
 
     elif action == '#jumpToEnd':
         #print("breakPoints:", breakPoints)
-        code = "(JP, " + str(breakPoints[-1]) + ", , )"
-        genCode[curAddrCode] = code
-        curAddrCode += 1
+        if len(breakPoints) > 0:
+            code = "(JP, " + str(breakPoints[-1]) + ", , )"
+            genCode[curAddrCode] = code
+            curAddrCode += 1
 
     elif action == '#saveIf':
         stack.append(curAddrCode)
         curAddrCode += 1
 
     elif action == '#jif':
-        code = "(JPF, " + str(stack[len(stack) - 2]) + ", " + str(curAddrCode + 1) + ", )"
-        genCode[int(stack[len(stack) - 1])] = code
-        stack.pop()
-        stack.pop()
-        stack.append(curAddrCode)
-        curAddrCode += 1
+        if len(stack) > 1:
+            code = "(JPF, " + str(stack[len(stack) - 2]) + ", " + str(curAddrCode + 1) + ", )"
+            genCode[int(stack[len(stack) - 1])] = code
+            stack.pop()
+            stack.pop()
+            stack.append(curAddrCode)
+            curAddrCode += 1
 
     elif action == '#jp':
-        code = "(JP, " + str(curAddrCode) + ", , )"
-        genCode[int(stack[len(stack) - 1])] = code
-        stack.pop()
+        if len(stack) > 0:
+            code = "(JP, " + str(curAddrCode) + ", , )"
+            genCode[int(stack[len(stack) - 1])] = code
+            stack.pop()
 
     elif action == '#jpf':
-        code = "(JPF, " + str(int(stack[len(stack) - 2])) + ", " + str(curAddrCode) + ", )"
-        genCode[int(stack[len(stack) - 1])] = code
-        stack.pop()
-        stack.pop()
+        if len(stack) > 1:
+            code = "(JPF, " + str(int(stack[len(stack) - 2])) + ", " + str(curAddrCode) + ", )"
+            genCode[int(stack[len(stack) - 1])] = code
+            stack.pop()
+            stack.pop()
 
     elif action == '#li':
         stack.append(curAddrCode)
@@ -831,16 +877,18 @@ def codeGen(action, input):
         #genCode[curAddrCode] = code
         #curAddrCode += 1
         #code = "(JP, " + str(int(stack[len(stack) - 2])) + ", , )"
-        code = "(JPF, " + str(int(stack[-1])) + ", " + str(int(stack[-2])) + ", )"
-        genCode[curAddrCode] = code
-        curAddrCode += 1
-        stack.pop()
-        stack.pop()
+        if len(stack) > 1:
+            code = "(JPF, " + str(int(stack[-1])) + ", " + str(int(stack[-2])) + ", )"
+            genCode[curAddrCode] = code
+            curAddrCode += 1
+            stack.pop()
+            stack.pop()
 
     elif action == '#eoi':
-        code = "(JP, " + str(curAddrCode) + ", , )"
-        genCode[breakPoints[-1]] = code
-        breakPoints.pop()
+        if len(breakPoints) > 0:
+            code = "(JP, " + str(curAddrCode) + ", , )"
+            genCode[breakPoints[-1]] = code
+            breakPoints.pop()
 
     elif action == '#jumpBack':
         if symbTable[findLastFuncSymbolScope(curScope)]["Lexeme"] != 'main':
@@ -877,22 +925,23 @@ def codeGen(action, input):
             code = "(PRINT, " + "604" + ", , )"
             genCode[curAddrCode] = code
             curAddrCode += 1"""
-        lex = symbTable[getIdxByAddr(stack[-1])]["Lexeme"]
-        #print(stack[-1])
-        if type(stack[-1]) == int and stack[-1] < 1000:
-            #print(lex, stack[-2], stack[-1], symbTable[findLex(lex, curScope)]["Address"])
-            stack[-1] = symbTable[findLex(lex, curScope)]["Address"]
-        #print(stack[-1])
-        if symbTable[getIdxByAddr(stack[-1])]["Type"][-1] != "*" and symbTable[getIdxByAddr(stack[-1])]["FuncArrVar"] == 'Arr':
-            code = '(ASSIGN, #' + str(stack[-1]) + ", " + str(stack[-2]) + ', )'
-        #elif symbTable[getIdxByAddr(stack[-1])]["Type"][-1] == "*":
-        #    code = '(ASSIGN, @' + str(stack[-1]) + ", " + str(stack[-2]) + ', )'
-        else:
-            code = '(ASSIGN, ' + str(stack[-1]) + ", " + str(stack[-2]) + ', )'
-        stack.pop()
-        stack.pop()
-        genCode[curAddrCode] = code
-        curAddrCode += 1
+        if len(stack) > 1:
+            lex = symbTable[getIdxByAddr(stack[-1])]["Lexeme"]
+            #print(stack[-1])
+            if type(stack[-1]) == int and stack[-1] < 1000:
+                #print(lex, stack[-2], stack[-1], symbTable[findLex(lex, curScope)]["Address"])
+                stack[-1] = symbTable[findLex(lex, curScope)]["Address"]
+            #print(stack[-1])
+            if symbTable[getIdxByAddr(stack[-1])]["Type"][-1] != "*" and symbTable[getIdxByAddr(stack[-1])]["FuncArrVar"] == 'Arr':
+                code = '(ASSIGN, #' + str(stack[-1]) + ", " + str(stack[-2]) + ', )'
+            #elif symbTable[getIdxByAddr(stack[-1])]["Type"][-1] == "*":
+            #    code = '(ASSIGN, @' + str(stack[-1]) + ", " + str(stack[-2]) + ', )'
+            else:
+                code = '(ASSIGN, ' + str(stack[-1]) + ", " + str(stack[-2]) + ', )'
+            stack.pop()
+            stack.pop()
+            genCode[curAddrCode] = code
+            curAddrCode += 1
 
         """
         elif action == '#assign@':
@@ -904,61 +953,65 @@ def codeGen(action, input):
         """
 
     elif action == '#arrIdx':
-        lex = symbTable[getIdxByAddr(stack[-2])]["Lexeme"]
-        if findArrLex(lex, curScope) != -1:
-            stack[-2] = symbTable[findArrLex(lex, curScope)]["Address"]
-            #print(".............................................................",
-            #      stack[-2], lex)
-        temp = getTemp()
-        code = '(MULT, ' + '#4' + ', ' + str(stack[-1]) + ', ' + str(temp) + ')'
-        genCode[curAddrCode] = code
-        curAddrCode += 1
-        temp2 = getTemp()
-        #print(stack)
-        if symbTable[getIdxByAddr(stack[-2])]["Type"][-1] == "*":
-            code = "(ADD, " + str(stack[-2]) + ", " + str(temp) + ", " + str(temp2) + ")"
-        else:
-            #print("boos.........................................................................", symbTable[getIdxByAddr(stack[-1])]["Lexeme"])
-            code = "(ADD, #" + str(stack[-2]) + ", " + str(temp) + ", " + str(temp2) + ")"
-        genCode[curAddrCode] = code
-        stack.pop()
-        stack.pop()
-        stack.append('@' + str(temp2))
-        curAddrCode += 1
+        if len(stack) > 1:
+            lex = symbTable[getIdxByAddr(stack[-2])]["Lexeme"]
+            if findArrLex(lex, curScope) != -1:
+                stack[-2] = symbTable[findArrLex(lex, curScope)]["Address"]
+                #print(".............................................................",
+                #      stack[-2], lex)
+            temp = getTemp()
+            code = '(MULT, ' + '#4' + ', ' + str(stack[-1]) + ', ' + str(temp) + ')'
+            genCode[curAddrCode] = code
+            curAddrCode += 1
+            temp2 = getTemp()
+            #print(stack)
+            if symbTable[getIdxByAddr(stack[-2])]["Type"][-1] == "*":
+                code = "(ADD, " + str(stack[-2]) + ", " + str(temp) + ", " + str(temp2) + ")"
+            else:
+                #print("boos.........................................................................", symbTable[getIdxByAddr(stack[-1])]["Lexeme"])
+                code = "(ADD, #" + str(stack[-2]) + ", " + str(temp) + ", " + str(temp2) + ")"
+            genCode[curAddrCode] = code
+            stack.pop()
+            stack.pop()
+            stack.append('@' + str(temp2))
+            curAddrCode += 1
 
     elif action == '#compare':
-        temp = getTemp()
-        if stack[-2] == '<':
-            code = "(LT, " + str(stack[-3]) + ", " + str(stack[-1]) + ", " + str(temp) + ")"
-        elif stack[-2] == '==':
-            code = "(EQ, " + str(stack[-3]) + ", " + str(stack[-1]) + ", " + str(temp) + ")"
-        genCode[curAddrCode] = code
-        curAddrCode += 1
-        stack.pop()
-        stack.pop()
-        stack.pop()
-        stack.append(temp)
+        if len(stack) > 2:
+            temp = getTemp()
+            if stack[-2] == '<':
+                code = "(LT, " + str(stack[-3]) + ", " + str(stack[-1]) + ", " + str(temp) + ")"
+            elif stack[-2] == '==':
+                code = "(EQ, " + str(stack[-3]) + ", " + str(stack[-1]) + ", " + str(temp) + ")"
+            genCode[curAddrCode] = code
+            curAddrCode += 1
+            stack.pop()
+            stack.pop()
+            stack.pop()
+            stack.append(temp)
     elif action == '#mult':
-        temp = getTemp()
-        code = '(MULT, ' + str(stack[-1]) + ', ' + str(stack[-2]) + ', ' + str(temp) + ')'
-        genCode[curAddrCode] = code
-        curAddrCode += 1
-        stack.pop()
-        stack.pop()
-        stack.append(temp)
+        if len(stack) > 1:
+            temp = getTemp()
+            code = '(MULT, ' + str(stack[-1]) + ', ' + str(stack[-2]) + ', ' + str(temp) + ')'
+            genCode[curAddrCode] = code
+            curAddrCode += 1
+            stack.pop()
+            stack.pop()
+            stack.append(temp)
     elif action == '#addMinus':
-        temp = getTemp()
-        code = ""
-        if stack[-2] == '+':
-            code = "(ADD, " + str(stack[-1]) + ", " + str(stack[-3]) + ", " + str(temp) + ")"
-        elif stack[-2] == '-':
-            code = "(SUB, " + str(stack[-3]) + ", " + str(stack[-1]) + ", " + str(temp) + ")"
-        genCode[curAddrCode] = code
-        curAddrCode += 1
-        stack.pop()
-        stack.pop()
-        stack.pop()
-        stack.append(temp)
+        if len(stack) > 2:
+            temp = getTemp()
+            code = ""
+            if stack[-2] == '+':
+                code = "(ADD, " + str(stack[-1]) + ", " + str(stack[-3]) + ", " + str(temp) + ")"
+            elif stack[-2] == '-':
+                code = "(SUB, " + str(stack[-3]) + ", " + str(stack[-1]) + ", " + str(temp) + ")"
+            genCode[curAddrCode] = code
+            curAddrCode += 1
+            stack.pop()
+            stack.pop()
+            stack.pop()
+            stack.append(temp)
     elif action == '#pushLess':
         stack.append('<')
 
@@ -979,59 +1032,204 @@ def codeGen(action, input):
         stack.append(temp)
 
     elif action == '#jf':
-        if type(stack[-1]) != int and stack[-1][0] == '@':
-            returnAddr = int(stack[-1][1:]) + 4
-        else:
-            returnAddr = int(stack[-1]) + 4
-        code = '(ASSIGN, #' + str(curAddrCode + 2) + ", " + str(returnAddr) + ', )'
-        genCode[curAddrCode] = code
-        curAddrCode += 1
-
-        codeAddr = symbTable[getIdxByAddr(stack[-1])]['CodeAddress']
-        code = "(JP, " + str(codeAddr) + ", , )"
-        genCode[curAddrCode] = code
-        curAddrCode += 1
-
-    elif action == '#pushReturn':
-        if type(stack[-1]) != int and stack[-1][0] == '@':
-            returnVal = int(stack[-1][1:]) + 8
-        else:
-            returnVal = int(stack[-1]) + 8
-
-        if symbTable[getIdxByAddr(int(stack[-1]))]['Type'] == 'int':
-            stack.pop()
-            temp = getTemp()
-            code = '(ASSIGN, ' + str(returnVal) + ", " + str(temp) + ', )'
-            stack.append(temp)
+        if len(stack) > 0:
+            if type(stack[-1]) != int and stack[-1][0] == '@':
+                returnAddr = int(stack[-1][1:]) + 4
+            else:
+                returnAddr = int(stack[-1]) + 4
+            code = '(ASSIGN, #' + str(curAddrCode + 2) + ", " + str(returnAddr) + ', )'
             genCode[curAddrCode] = code
             curAddrCode += 1
-        else:
-            stack.pop()
+
+            codeAddr = symbTable[getIdxByAddr(stack[-1])]['CodeAddress']
+            code = "(JP, " + str(codeAddr) + ", , )"
+            genCode[curAddrCode] = code
+            curAddrCode += 1
+
+    elif action == '#pushReturn':
+        if len(stack) > 0:
+            if type(stack[-1]) != int and stack[-1][0] == '@':
+                returnVal = int(stack[-1][1:]) + 8
+            else:
+                returnVal = int(stack[-1]) + 8
+
+            if symbTable[getIdxByAddr(int(stack[-1]))]['Type'] == 'int':
+                stack.pop()
+                temp = getTemp()
+                code = '(ASSIGN, ' + str(returnVal) + ", " + str(temp) + ', )'
+                stack.append(temp)
+                genCode[curAddrCode] = code
+                curAddrCode += 1
+            else:
+                stack.pop()
 
     elif action == '#specDataAddrFunc':
-        stack.append(stack[-1] + 12)
+        if len(stack) > 0:
+            stack.append(stack[-1] + 12)
 
     elif action == '#pushAgain':
-        stack.append(stack[-1])
+        if len(stack) > 0:
+            stack.append(stack[-1])
 
     elif action == '#pushLen':
         stack.append(len(stack))
     elif action == '#popIf':
+        if len(stack) > 1:
         #print("******:", len(stack), stack[-2] + 2)
-        if len(stack) >= 2 and len(stack) == stack[-2] + 2:
-            stack.pop()
-            stack.pop()
-        elif len(stack) == stack[-1] + 1:
-            stack.pop()
+            if len(stack) >= 2 and len(stack) == stack[-2] + 2:
+                stack.pop()
+                stack.pop()
+            elif len(stack) == stack[-1] + 1:
+                stack.pop()
 
     elif action == '#updateNextArgAddr':
-        stack[-1] = stack[-1] + 4
-        stack.append(stack[-1])
+        if len(stack) > 0:
+            stack[-1] = stack[-1] + 4
+            stack.append(stack[-1])
 
     elif action == '#popAgain':
-        stack.pop()
-        stack.pop()
+        if len(stack) > 1:
+            stack.pop()
+            stack.pop()
 
+    #elif action == '%args1':
+
+    elif action == '%args2':
+        lastSymbElem["No.Args"] = int(input)
+        symbTable[-1] = lastSymbElem
+    elif action == '%argsPush':
+        argsStack.append(0)
+    elif action == '%argsUpdateFunc':
+        argsStack[-1] += 1
+    elif action == '%zeroArgs':
+        symbTable[findLastFuncSymbol()]["No.Args"] = argsStack[-1]
+        argsStack.pop()
+
+    elif action == '@popType':
+        semanticStack.pop()
+
+    elif action == '@pushTypeSpecifier':
+        semanticStack.append(input)
+
+    elif action == '@checkVoid':
+        if semanticStack[-1] == 'void':
+            if chk(lineCount - 3, lastSymbElem['Lexeme']):
+                semantic_errors.append("#" + str(lineCount - 3) + " : Semantic Error! Illegal type of void for '" + lastSymbElem['Lexeme'] + "'.")
+                semantic_errors_shdw.append(True)
+                overall_errors.append((lineCount - 3, lastSymbElem['Lexeme']))
+        semanticStack.pop()
+    elif action == '@checkBreakInRepeatUntil':
+        if len(breakPoints) <= 0:
+            if chk(lineCount - 2, 'break'):
+                semantic_errors.append("#" + str(lineCount - 2) + " : Semantic Error! No 'repeat ... until' found for 'break'.")
+                semantic_errors_shdw.append(True)
+                overall_errors.append((lineCount - 2, 'break'))
+
+    elif action == '@pushType':
+        if input.isnumeric():
+            semanticStack.append('int')
+        else:
+            temp = symbTable[findLex(input, curScope)]["Type"]
+            temp_2 = symbTable[findLex(input, curScope)]["FuncArrVar"]
+            if temp == 'int' and temp_2 == 'Arr':
+                semanticStack.append('array')
+            elif temp == 'int*':
+                semanticStack.append('array')
+            else:
+                semanticStack.append(temp)
+
+    elif action == '@pushType2':
+        semanticStack[-1] = 'int'
+
+    elif action == '@initialCheckScope':
+        if findLex(input, curScope) == -1:
+            if chk(lineCount - 2, input):
+                semantic_errors.append("#" + str(lineCount - 2) + " : Semantic Error! '" + input + "' is not defined.")
+                semantic_errors_shdw.append(False)
+                overall_errors.append((lineCount - 2, input))
+
+    elif action == '@certain':
+        if len(semantic_errors_shdw) > 0:
+            semantic_errors_shdw[-1] = True
+    elif action == '@checkScope':
+        if input == '[':
+            if findArrLex(symbTable[getIdxByAddr(stack[-1])]['Lexeme'], curScope) == -1:
+                if len(semantic_errors_shdw) > 0 and not semantic_errors_shdw[-1]:
+                    semantic_errors[-1] = "#" + str(lineCount - 2) + " : Semantic Error! '" + symbTable[getIdxByAddr(stack[-1])]['Lexeme'] + "' is not defined."
+                    overall_errors[-1] = (lineCount - 2, symbTable[getIdxByAddr(stack[-1])]['Lexeme'])
+                else:
+                    if chk(lineCount - 2, symbTable[getIdxByAddr(stack[-1])]['Lexeme']):
+                        semantic_errors.append("#" + str(lineCount - 2) + " : Semantic Error! '" + symbTable[getIdxByAddr(stack[-1])][
+                            'Lexeme'] + "' is not defined.")
+                        semantic_errors_shdw.append(True)
+                        overall_errors.append((lineCount - 2, symbTable[getIdxByAddr(stack[-1])]['Lexeme']))
+            else:
+                if len(semantic_errors_shdw) != 0 and not semantic_errors_shdw[-1]:
+                    semantic_errors.pop()
+                    semantic_errors_shdw.pop()
+                    overall_errors.pop()
+        elif input == '(':
+            if findFuncLex(symbTable[getIdxByAddr(stack[-1])]['Lexeme'], curScope) == -1:
+                if not semantic_errors_shdw[-1]:
+                    semantic_errors[-1] = "#" + str(lineCount - 2) + " : Semantic Error! '" + symbTable[getIdxByAddr(stack[-1])]['Lexeme'] + "' is not defined."
+                    overall_errors[-1] = (lineCount - 2, symbTable[getIdxByAddr(stack[-1])]['Lexeme'])
+                else:
+                    if chk(lineCount - 2, symbTable[getIdxByAddr(stack[-1])]['Lexeme']):
+                        semantic_errors.append("#" + str(lineCount - 2) + " : Semantic Error! '" + symbTable[getIdxByAddr(stack[-1])]['Lexeme'] + "' is not defined.")
+                        semantic_errors_shdw.append(True)
+                        overall_errors.append((lineCount - 2, symbTable[getIdxByAddr(stack[-1])]['Lexeme']))
+            else:
+                if len(semantic_errors_shdw) != 0 and not semantic_errors_shdw[-1]:
+                    semantic_errors.pop()
+                    semantic_errors_shdw.pop()
+                    overall_errors.pop()
+    elif action == '@checkSide':
+        if semanticStack[-1] != semanticStack[-2]:
+            if chk(lineCount - 2, "Type mismatch in operands"):
+                semantic_errors.append("#" + str(lineCount - 2) + " : Semantic Error! Type mismatch in operands, Got " + semanticStack[-1] + " instead of " + semanticStack[-2] + ".")
+                semantic_errors_shdw.append(True)
+                overall_errors.append((lineCount - 2, "Type mismatch in operands"))
+        temp = semanticStack[-2]
+        semanticStack.pop()
+        semanticStack.pop()
+        semanticStack.append(temp)
+    elif action == '@pushArgCount':
+        funcArgsCountStack.append(0)
+    elif action == '@incrementArgCount':
+        print("x: ", funcArgsCountStack)
+        funcArgsCountStack[-1] += 1
+    elif action == '@checkArgs':
+        if symbTable[getIdxByAddr(stack[-4])]["No.Args"] >= funcArgsCountStack[-1]:
+            lex = symbTable[getIdxByAddr(stack[-1])]["Lexeme"]
+            temp = symbTable[getIdxByAddr(stack[-1])]["Type"]
+            temp_2 = symbTable[getIdxByAddr(stack[-1])]["FuncArrVar"]
+            if type(stack[-1]) == int and stack[-1] < 1000:
+                temp = symbTable[findLex(lex, curScope)]["Type"]
+                temp_2 = symbTable[findLex(lex, curScope)]["FuncArrVar"]
+            if temp == 'int*' or temp_2 == 'Arr':
+                temp = 'array'
+            temp_2 = symbTable[getIdxByAddr(stack[-2])]["Type"]
+            if lineCount - 2 == 15:
+                print(stack[-2], symbTable[getIdxByAddr(stack[-2])])
+            if symbTable[getIdxByAddr(stack[-2])]["Type"] == 'int*' or symbTable[getIdxByAddr(stack[-2])]["FuncArrVar"] == 'Arr':
+                temp_2 = 'array'
+            if semanticStack[-1] != temp_2:
+                if chk(lineCount - 2, str(funcArgsCountStack[-1])):
+                    semantic_errors.append("#" + str(lineCount - 2) + " : Semantic Error! Mismatch in type of argument " + str(funcArgsCountStack[-1]) + " of '" + symbTable[getIdxByAddr(stack[-4])]["Lexeme"] + "'. Expected '" + temp_2 + "' but got '" + semanticStack[-1] + "' instead.")
+                    semantic_errors_shdw.append(True)
+                    overall_errors.append((lineCount - 2, str(funcArgsCountStack[-1])))
+        semanticStack.pop()
+
+    elif action == '@checkArgCountAndReset':
+        #print(funcArgsCountStack)
+        if symbTable[getIdxByAddr(stack[-1])]["No.Args"] != funcArgsCountStack[-1]:
+            if chk(lineCount - 2, symbTable[getIdxByAddr(stack[-1])]["Lexeme"]):
+                semantic_errors.append("#" + str(lineCount - 2) + " : Semantic Error! Mismatch in numbers of arguments of '" + symbTable[getIdxByAddr(stack[-1])]["Lexeme"] + "'.")
+                semantic_errors_shdw.append(True)
+                overall_errors.append((lineCount - 2, symbTable[getIdxByAddr(stack[-1])]["Lexeme"]))
+            #for i in range(len(semantic_errors) - 1, -1, -1):
+            #    if
+        funcArgsCountStack.pop()
 
 # Auxiliary variables
 lineCount = 1
@@ -1221,3 +1419,4 @@ write_file_lexical()
 write_file_parser()
 write_generated_code()
 write_symb_table()
+write_semantic_errors()
