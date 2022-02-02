@@ -132,7 +132,7 @@ def initialize_nodes():
                     #    gen[last_n_idx] = []
                     last_n_idx += 1
             tt = 0
-            #print(dec[last_n_idx])
+            #print(dec)
             while tt < len(rule):
                 if rule[tt][0] == '#':
                     rule.pop(tt)
@@ -166,7 +166,7 @@ def initialize_nodes():
                 # if gen[len(rule)] != []:
                 #    finalNode.ops[1] += gen[len(rule)]
 
-    #showNodes()
+    showNodes()
 
 
 def showNodes():
@@ -174,13 +174,14 @@ def showNodes():
         start = nonTerm.start
         finish = nonTerm.final
         for x in start.to:
+            past_y = start
             y = start.to[x]
             print(start.id, start.to_ops[x], x, y.id)
             tt = x
             while True:
                 if y == finish:
                     for t in y.from_ops:
-                        if t[1] == tt:
+                        if t[1] == tt and t[0] == past_y:
                             print(y.from_ops[t])
                     print("......................")
                     break
@@ -189,6 +190,7 @@ def showNodes():
                     z = y.to[t]
                     print(y.id, y.ops, t, z.id)
                     tt = t
+                past_y = y
                 y = z
 
 
@@ -331,6 +333,8 @@ initialize_follow()
 parse_table_txt = ""
 syntax_error_txt = ""
 traverse_list = [Node.nodes[0]]
+shadow = [False]
+nonTermShadow = [""]
 middle_edge = '├── '
 last_edge = '└── '
 cont_edges = '│   '
@@ -387,6 +391,8 @@ def write_file_parser():
 def write_epsilon(node_, edge_type_):
     global parse_table_txt, traverse_list
     parse_table_txt += calc_line_first_part() + edge_type_ + 'epsilon' + '\n'
+    shadow.append(False)
+    nonTermShadow.append("")
     traverse_list.append(node_)
 
 
@@ -396,6 +402,8 @@ def write_term(node_, la_role_, la_tok_, edge_type_):
         parse_table_txt += calc_line_first_part() + edge_type_ + "$" + '\n'
     else:
         parse_table_txt += calc_line_first_part() + edge_type_ + '(' + la_role_ + ', ' + la_tok_ + ')' + '\n'
+    shadow.append(False)
+    nonTermShadow.append("")
     traverse_list.append(node_)
 
 
@@ -403,13 +411,20 @@ def write_nonterm(node_, res_, edge_type_):
     global parse_table_txt, traverse_list
     resName = res_.name.replace('_', '-')
     parse_table_txt += calc_line_first_part() + edge_type_ + resName + '\n'
+    shadow.append(False)
+    nonTermShadow.append("")
+    shadow.append(False)
+    nonTermShadow.append("")
     traverse_list.append(node_)
     traverse_list.append(res_.start)
 
 
 def calc_line_first_part():
     line_first_part = ''
-    for node in traverse_list:
+    for i in range(len(traverse_list)):
+        if shadow[i] == True:
+            continue
+        node = traverse_list[i]
         if node.final:
             line_first_part += space
         else:
@@ -610,19 +625,34 @@ def get_next_token():
         return ret
 
 
+stackFuncScope = []
 stack = []
 symbTable = []
 lastSymbElem = None
-curAddrCode = 0
+curAddrCode = 3
 curAddrData = 500
 curAddrTemp = 1000
 curScope = 0
 breakPoints = []
 genCode = []
 
-for i in range(100000):
+for i in range(100):
     genCode.append("")
 
+genCode[0] = "(JP, 3, , )"
+genCode[1] = "(PRINT, 512, , )"
+genCode[2] = "(JP, @504, , )"
+
+
+def write_symb_table():
+    st = ""
+    for x in symbTable:
+        for y in x.keys():
+            st += str(x[y]) + '\t'
+        st += '\n'
+    st = st[:-1]
+    with open('Main_Symbol_Table.txt', 'w') as g:
+        g.write(st)
 
 def getTemp():
     global curAddrTemp
@@ -635,6 +665,7 @@ def findLastFuncSymbol():
         if symbTable[i]['FuncArrVar'] == 'Func':
             return i
     return -1
+
 
 def getIdxByAddr(a):
     for i in range(len(symbTable) - 1, -1, -1):
@@ -649,10 +680,18 @@ def findAddrSymb(inp):
             return i
     return -1
 
+def write_generated_code():
+    finalCode = ""
+    for line in genCode:
+        finalCode += line + '\n'
+    finalCode = finalCode[:-1]
+    with open("generated_code.txt", "w") as gen_code:
+        gen_code.write(finalCode)
 
 def codeGen(action, input):
     print(action, input)
     print("stack:", stack)
+
     global lastSymbElem, curAddrCode, curAddrTemp, curAddrData, curScope
     if action == '%defAddr':
         if lastSymbElem is None:
@@ -691,6 +730,7 @@ def codeGen(action, input):
         lastSymbElem['FuncArrVar'] = 'Arr'
         symbTable[len(symbTable) - 1] = lastSymbElem
     elif action == '%funcSpec':
+        stackFuncScope.append(len(stack))
         lastSymbElem['FuncArrVar'] = 'Func'
         symbTable[len(symbTable) - 1] = lastSymbElem
     elif action == '%returnAddrVal':
@@ -698,6 +738,7 @@ def codeGen(action, input):
     elif action == '%codeAddr':
         lastSymbElem['CodeAddress'] = curAddrCode
         symbTable[len(symbTable) - 1] = lastSymbElem
+        symbTable[0]['CodeAddress'] = 1
     elif action == '%arrPointerSpec':
         lastSymbElem['Type'] += "*"
         symbTable[len(symbTable) - 1] = lastSymbElem
@@ -713,6 +754,7 @@ def codeGen(action, input):
         curAddrCode += 2
 
     elif action == '#jumpToEnd':
+        print("breakPoints:", breakPoints)
         code = "(JP, " + str(breakPoints[-1]) + ", , )"
         genCode[curAddrCode] = code
         curAddrCode += 1
@@ -722,7 +764,7 @@ def codeGen(action, input):
         curAddrCode += 1
 
     elif action == '#jif':
-        code = "(JPF, " + str(int(stack[len(stack) - 2])) + ", " + str(curAddrCode + 1) + ", )"
+        code = "(JPF, " + str(stack[len(stack) - 2]) + ", " + str(curAddrCode + 1) + ", )"
         genCode[int(stack[len(stack) - 1])] = code
         stack.pop()
         stack.pop()
@@ -757,7 +799,7 @@ def codeGen(action, input):
 
     elif action == '#jr':
         returnAddr = symbTable[findLastFuncSymbol()]['Address'] + 4
-        code = "(JP, " + str(returnAddr) + ", , )"
+        code = "(JP, @" + str(returnAddr) + ", , )"
         genCode[curAddrCode] = code
         curAddrCode += 1
 
@@ -782,17 +824,25 @@ def codeGen(action, input):
         genCode[curAddrCode] = code
         curAddrCode += 1
 
+        """
+        elif action == '#assign@':
+        code = '(ASSIGN, ' + str(stack[-1]) + ", @" + str(stack[-2]) + ', )'
+        stack.pop()
+        stack.pop()
+        genCode[curAddrCode] = code
+        curAddrCode += 1
+        """
 
     elif action == '#arrIdx':
         temp = getTemp()
         if symbTable[getIdxByAddr(stack[-1])]["Type"][-1] == "*":
-            code = "(ADD, @" + str(stack[-1]) + ", " + '#' + str(stack[-2]) + ", " + str(temp) + ")"
+            code = "(ADD, " + str(stack[-1]) + ", " + '#' + str(stack[-2] * 4) + ", " + str(temp) + ")"
         else:
-            code = "(ADD, " + str(stack[-1]) + ", " + '#' + str(stack[-2]) + ", " + str(temp) + ")"
+            code = "(ADD, #" + str(stack[-1]) + ", " + '#' + str(stack[-2] * 4) + ", " + str(temp) + ")"
         genCode[curAddrCode] = code
         stack.pop()
         stack.pop()
-        stack.append(temp)
+        stack.append('@' + str(temp))
         curAddrCode += 1
 
     elif action == '#compare':
@@ -803,6 +853,7 @@ def codeGen(action, input):
             code = "(EQ, " + str(stack[-3]) + ", " + str(stack[-1]) + ", " + str(temp) + ")"
         genCode[curAddrCode] = code
         curAddrCode += 1
+        stack.pop()
         stack.pop()
         stack.pop()
         stack.append(temp)
@@ -823,6 +874,7 @@ def codeGen(action, input):
             code = "(SUB, " + str(stack[-3]) + ", " + str(stack[-1]) + ", " + str(temp) + ")"
         genCode[curAddrCode] = code
         curAddrCode += 1
+        stack.pop()
         stack.pop()
         stack.pop()
         stack.append(temp)
@@ -846,7 +898,10 @@ def codeGen(action, input):
         stack.append(temp)
 
     elif action == '#jf':
-        returnAddr = stack[-1] + 4
+        if type(stack[-1]) != int and stack[-1][0] == '@':
+            returnAddr = int(stack[-1][1:]) + 4
+        else:
+            returnAddr = int(stack[-1]) + 4
         code = '(ASSIGN, ' + str(curAddrCode + 2) + ", " + str(returnAddr) + ', )'
         genCode[curAddrCode] = code
         curAddrCode += 1
@@ -857,9 +912,16 @@ def codeGen(action, input):
         curAddrCode += 1
 
     elif action == '#pushReturn':
-        returnVal = stack[-1] + 8
+        if type(stack[-1]) != int and stack[-1][0] == '@':
+            returnVal = int(stack[-1][1:]) + 8
+        else:
+            returnVal = int(stack[-1]) + 8
         stack.pop()
-        stack.append(returnVal)
+        temp = getTemp()
+        code = '(ASSIGN, ' + str(returnVal) + ", " + str(temp) + ', )'
+        stack.append(temp)
+        genCode[curAddrCode] = code
+        curAddrCode += 1
 
     elif action == '#specDataAddrFunc':
         stack.append(stack[-1] + 12)
@@ -869,8 +931,10 @@ def codeGen(action, input):
 
     elif action == '#updateNextArgAddr':
         stack[-1] = stack[-1] + 4
+        stack.append(stack[-1])
 
     elif action == '#popAgain':
+        stack.pop()
         stack.pop()
 
 
@@ -887,68 +951,128 @@ initSymbolTable(keywords)
 
 f = open('input.txt', 'r')
 inputLine = f.read()
+inputLine = 'void output (int a) {\n\t}\n' + inputLine
 i = 0
 flag_exit = 0
-last_la_tok = ""
+last_term_nonterm = ""
+last_last_node = None
 la_role, la_tok = get_next_token_parser()
+last_la_tok = la_tok
 parse_table_txt += 'Program\n'
 while traverse_list and not flag_exit:
     match = False
-    print(last_la_tok)
+    shdw = shadow.pop()
+    nonTermshdw = nonTermShadow.pop()
     last_node = traverse_list.pop()
+    #for u in range(len(traverse_list)):
+    #    print(traverse_list[u].id, shadow[u], end=', ')
+    #print(last_node.id)
+    last_la_tok = la_tok
     if last_node.final:
+        shadow.pop()
+        last_last_node = traverse_list.pop()
+        last_term_nonterm = nonTermShadow.pop()
+        #print(last_node.from_ops)
+        for t in last_node.from_ops:
+            #print("............................")
+            #print(t[0].id, last_last_node.id)
+            #print(t[1], last_term_nonterm)
+            #print("............................")
+            if last_term_nonterm == t[1] and last_last_node.id == t[0].id:
+                for x in last_node.from_ops[t]:
+                    codeGen(x, la_tok)
+        while len(shadow) > 0 and shadow[-1]:
+            shadow.pop()
+            nonTermShadow.pop()
+            last_node = last_last_node
+            last_last_node = traverse_list.pop()
+            if last_node.final:
+                print(last_last_node, last_node.from_ops)
+                for t in last_node.from_ops:
+                    if last_term_nonterm == t[1] and last_last_node == t[0]:
+                        for x in last_node.from_ops[t]:
+                            codeGen(x, la_tok)
         continue
+
+    if shdw == True:
+        continue
+
     for term_nonterm, node in last_node.to.items():
+        print(la_tok)
+        last_term_nonterm = term_nonterm
+        last_last_node = last_node
         res = getNonTermByName(term_nonterm)
         edge_type = last_edge if node.final else middle_edge
         if res:
             if la_role == 'NUM' or la_role == 'ID':
                 if la_role in res.first:
+                    shadow.append(True)
+                    nonTermShadow.append(term_nonterm)
+                    traverse_list.append(last_node)
                     write_nonterm(node, res, edge_type)
                     match = True
                     break
                 elif 'EPSILON' in res.first and la_role in res.follow:
+                    shadow.append(True)
+                    nonTermShadow.append(term_nonterm)
+                    traverse_list.append(last_node)
                     write_nonterm(node, res, edge_type)
                     match = True
                     break
             else:
                 if la_tok in res.first:
+                    shadow.append(True)
+                    nonTermShadow.append(term_nonterm)
+                    traverse_list.append(last_node)
                     write_nonterm(node, res, edge_type)
                     match = True
                     break
                 elif 'EPSILON' in res.first and la_tok in res.follow:
+                    shadow.append(True)
+                    nonTermShadow.append(term_nonterm)
+                    traverse_list.append(last_node)
                     write_nonterm(node, res, edge_type)
                     match = True
                     break
         else:
             if la_role == 'NUM' or la_role == 'ID':
                 if la_role == term_nonterm:
+                    shadow.append(True)
+                    nonTermShadow.append(term_nonterm)
+                    traverse_list.append(last_node)
                     write_term(node, la_role, la_tok, edge_type)
                     last_la_tok = la_tok
                     la_role, la_tok = get_next_token_parser()
                     match = True
                     break
                 elif term_nonterm == 'EPSILON' and la_role in node.final.follow:
+                    shadow.append(True)
+                    nonTermShadow.append(term_nonterm)
+                    traverse_list.append(last_node)
                     write_epsilon(node, edge_type, )
                     match = True
                     break
             else:
                 if la_tok == term_nonterm:
+                    shadow.append(True)
+                    nonTermShadow.append(term_nonterm)
+                    traverse_list.append(last_node)
                     write_term(node, la_role, la_tok, edge_type)
                     last_la_tok = la_tok
                     la_role, la_tok = get_next_token_parser()
                     match = True
                     break
                 elif term_nonterm == 'EPSILON' and la_tok in node.final.follow:
+                    shadow.append(True)
+                    nonTermShadow.append(term_nonterm)
+                    traverse_list.append(last_node)
                     write_epsilon(node, edge_type)
                     match = True
                     break
     if match:
+        #print(last_node.id)
         if term_nonterm in last_node.to_ops:
             for x in last_node.to_ops[term_nonterm]:
-                codeGen(x, last_la_tok)
-        elif term_nonterm in last_node.from_ops:
-            for x in last_node.from_ops[term_nonterm]:
                 codeGen(x, last_la_tok)
         elif last_node.ops != []:
             for x in last_node.ops:
@@ -967,6 +1091,8 @@ while traverse_list and not flag_exit:
                 if la_role == 'NUM' or la_role == 'ID':
                     if la_role in res.follow:
                         syntax_error_txt += f'#{lineCount} : syntax error, missing {term_nonterm}\n'
+                        shadow.append(False)
+                        nonTermShadow.append("")
                         traverse_list.append(node)
                         flag = True
                         err_name = term_nonterm
@@ -974,20 +1100,29 @@ while traverse_list and not flag_exit:
                 else:
                     if la_tok in res.follow:
                         syntax_error_txt += f'#{lineCount} : syntax error, missing {term_nonterm}\n'
+                        shadow.append(False)
+                        nonTermShadow.append("")
                         traverse_list.append(node)
                         flag = True
                         break
             else:
                 if len(last_node.to) == 1:
                     syntax_error_txt += f'#{lineCount} : syntax error, missing {term_nonterm}\n'
+                    shadow.append(False)
+                    nonTermShadow.append("")
                     traverse_list.append(node)
                     flag = True
                     break
         if not flag and not flag_exit:
             syntax_error_txt += f'#{lineCount} : syntax error, illegal {la_role if la_role == "ID" or la_role == "NUM" else la_tok}\n'
+            shadow.append(False)
+            nonTermShadow.append("")
             traverse_list.append(last_node)
+            last_la_tok = la_tok
             la_role, la_tok = get_next_token_parser()
             flag = False
 
 write_file_lexical()
 write_file_parser()
+write_generated_code()
+write_symb_table()
