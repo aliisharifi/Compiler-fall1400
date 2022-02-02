@@ -653,6 +653,7 @@ def write_symb_table():
     with open('Main_Symbol_Table.txt', 'w') as g:
         g.write(st)
 
+
 def getTemp():
     global curAddrTemp
     curAddrTemp += 4
@@ -666,9 +667,45 @@ def findLastFuncSymbol():
     return -1
 
 
+def findLastFuncSymbolScope(sc):
+    temp = sc
+    for i in range(len(symbTable) - 1, -1, -1):
+        if symbTable[i]["Scope"] > temp:
+            continue
+        if symbTable[i]["Scope"] < temp:
+            temp -= 1
+        if symbTable[i]['FuncArrVar'] == 'Func' and temp >= symbTable[i]["Scope"]:
+            return i
+    return -1
+
+
 def getIdxByAddr(a):
     for i in range(len(symbTable) - 1, -1, -1):
         if symbTable[i]['Address'] == a:
+            return i
+    return -1
+
+
+def findArrLex(w, sc):
+    temp = sc
+    for i in range(len(symbTable) - 1, -1, -1):
+        if symbTable[i]["Scope"] > temp:
+            continue
+        if symbTable[i]["Scope"] < temp:
+            temp -= 1
+        if symbTable[i]['FuncArrVar'] == 'Arr' and temp >= symbTable[i]["Scope"] and w == symbTable[i]["Lexeme"]:
+            return i
+    return -1
+
+
+def findLex(w, sc):
+    temp = sc
+    for i in range(len(symbTable) - 1, -1, -1):
+        if symbTable[i]["Scope"] > temp:
+            continue
+        if symbTable[i]["Scope"] < temp:
+            temp -= 1
+        if temp >= symbTable[i]["Scope"] and w == symbTable[i]["Lexeme"]:
             return i
     return -1
 
@@ -678,6 +715,7 @@ def findAddrSymb(inp):
         if symbTable[i]['Lexeme'] == inp:
             return i
     return -1
+
 
 def write_generated_code():
     finalCode = ""
@@ -692,8 +730,8 @@ def write_generated_code():
         gen_code.write(finalCode)
 
 def codeGen(action, input):
-    print(action, input)
-    print("stack:", stack)
+    #print(action, input)
+    #print("stack:", stack)
 
     global lastSymbElem, curAddrCode, curAddrTemp, curAddrData, curScope
     if action == '%defAddr':
@@ -726,7 +764,7 @@ def codeGen(action, input):
         lastSymbElem['FuncArrVar'] = 'Var'
         symbTable[len(symbTable) - 1] = lastSymbElem
     elif action == '%updateAddr2':
-        curAddrData += int(input)
+        curAddrData += int(input) * 4
     # elif action == '%args2':
     #
     elif action == '%arrSpec':
@@ -757,7 +795,7 @@ def codeGen(action, input):
         curAddrCode += 2
 
     elif action == '#jumpToEnd':
-        print("breakPoints:", breakPoints)
+        #print("breakPoints:", breakPoints)
         code = "(JP, " + str(breakPoints[-1]) + ", , )"
         genCode[curAddrCode] = code
         curAddrCode += 1
@@ -789,7 +827,10 @@ def codeGen(action, input):
         stack.append(curAddrCode)
 
     elif action == '#ji':
-        code = "(JPF, " + str(int(stack[len(stack) - 1])) + ", " + str(int(stack[len(stack) - 2])) + ", )"
+        code = "(JPF, " + str(int(stack[len(stack) - 1])) + ", " + str(curAddrCode + 2) + ", )"
+        genCode[curAddrCode] = code
+        curAddrCode += 1
+        code = "(JP, " + str(int(stack[len(stack) - 2])) + ", , )"
         genCode[curAddrCode] = code
         curAddrCode += 1
         stack.pop()
@@ -799,6 +840,13 @@ def codeGen(action, input):
         code = "(JP, " + str(curAddrCode) + ", , )"
         genCode[breakPoints[-1]] = code
         breakPoints.pop()
+
+    elif action == '#jumpBack':
+        if symbTable[findLastFuncSymbolScope(curScope)]["Lexeme"] != 'main':
+            returnAddr = symbTable[findLastFuncSymbolScope(curScope)]['Address'] + 4
+            code = "(JP, @" + str(returnAddr) + ", , )"
+            genCode[curAddrCode] = code
+            curAddrCode += 1
 
     elif action == '#jr':
         returnAddr = symbTable[findLastFuncSymbol()]['Address'] + 4
@@ -821,7 +869,22 @@ def codeGen(action, input):
     #
     #
     elif action == '#assign':
-        code = '(ASSIGN, ' + str(stack[-1]) + ", " + str(stack[-2]) + ', )'
+        """if type(stack[-1]) != int and stack[-1][0] == '@':
+            code = "(PRINT, " + str(stack[-1][1:]) + ", , )"
+            genCode[curAddrCode] = code
+            curAddrCode += 1
+            code = "(PRINT, " + "604" + ", , )"
+            genCode[curAddrCode] = code
+            curAddrCode += 1"""
+        lex = symbTable[getIdxByAddr(stack[-1])]["Lexeme"]
+        stack[-1] = symbTable[findLex(lex, curScope)]["Address"]
+        #print(stack[-1])
+        if symbTable[getIdxByAddr(stack[-1])]["Type"][-1] != "*" and symbTable[getIdxByAddr(stack[-1])]["FuncArrVar"] == 'Arr':
+            code = '(ASSIGN, #' + str(stack[-1]) + ", " + str(stack[-2]) + ', )'
+        #elif symbTable[getIdxByAddr(stack[-1])]["Type"][-1] == "*":
+        #    code = '(ASSIGN, @' + str(stack[-1]) + ", " + str(stack[-2]) + ', )'
+        else:
+            code = '(ASSIGN, ' + str(stack[-1]) + ", " + str(stack[-2]) + ', )'
         stack.pop()
         stack.pop()
         genCode[curAddrCode] = code
@@ -837,14 +900,19 @@ def codeGen(action, input):
         """
 
     elif action == '#arrIdx':
+        lex = symbTable[getIdxByAddr(stack[-2])]["Lexeme"]
+        stack[-2] = symbTable[findArrLex(lex, curScope)]["Address"]
+        #print(".............................................................",
+        #      stack[-2])
         temp = getTemp()
         code = '(MULT, ' + '#4' + ', ' + str(stack[-1]) + ', ' + str(temp) + ')'
         genCode[curAddrCode] = code
         curAddrCode += 1
         temp2 = getTemp()
-        if symbTable[getIdxByAddr(stack[-1])]["Type"][-1] == "*":
+        if symbTable[getIdxByAddr(stack[-2])]["Type"][-1] == "*":
             code = "(ADD, " + str(stack[-2]) + ", " + str(temp) + ", " + str(temp2) + ")"
         else:
+            #print("boos.........................................................................", symbTable[getIdxByAddr(stack[-1])]["Lexeme"])
             code = "(ADD, #" + str(stack[-2]) + ", " + str(temp) + ", " + str(temp2) + ")"
         genCode[curAddrCode] = code
         stack.pop()
@@ -1008,7 +1076,7 @@ while traverse_list and not flag_exit:
             last_node = last_last_node
             last_last_node = traverse_list.pop()
             if last_node.final:
-                print(last_last_node, last_node.from_ops)
+                #print(last_last_node, last_node.from_ops)
                 for t in last_node.from_ops:
                     if last_term_nonterm == t[1] and last_last_node == t[0]:
                         for x in last_node.from_ops[t]:
