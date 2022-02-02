@@ -1,8 +1,8 @@
 1. Program -> Declaration_list $
 2. Declaration_list -> Declaration Declaration_list | EPSILON
 3. Declaration -> %defAddr %defScope Declaration_initial Declaration_prime
-4. Declaration_initial -> %defType Type_specifier %defLex ID
-5. Declaration_prime -> Fun_declaration_prime | Var_declaration_prime
+4. Declaration_initial -> %defType @pushTypeSpecifier Type_specifier %defLex ID
+5. Declaration_prime -> Fun_declaration_prime @popType | Var_declaration_prime @checkVoid
 6. Var_declaration_prime -> %updateAddr1 %args1 %varSpec ; | [ %updateAddr2 %args2 NUM ] %arrSpec ;
 7. Fun_declaration_prime -> %funcSpec %returnAddrVal %codeAddr %updateScopeInc ( Params ) %updateScopeDec Compound_stmt #jumpBack
 8. Type_specifier -> int | void
@@ -13,33 +13,33 @@
 13. Compound_stmt -> { %updateScopeInc Declaration_list Statement_list } %updateScopeDec
 14. Statement_list -> Statement Statement_list | EPSILON
 15. Statement -> Expression_stmt | Compound_stmt | Selection_stmt | Iteration_stmt | Return_stmt
-16. Expression_stmt -> #pushLen Expression ; #popIf | break ; #jumpToEnd | ;
+16. Expression_stmt -> #pushLen Expression ; #popIf @popType | @checkBreakInRepeatUntil break ; #jumpToEnd | ;
 17. Selection_stmt -> if ( Expression ) #saveIf Statement Else_stmt
 18. Else_stmt -> endif #jpf | else #jif Statement endif #jp
 19. Iteration_stmt -> #breakPoint repeat #li Statement until ( Expression ) #ji #eoi
 20. Return_stmt -> return Return_stmt_prime #jr
 21. Return_stmt_prime -> ; | Expression ; #assR
-22. Expression -> Simple_expression_zegond | #pidAddr ID B
-23. B -> #readAddr = #pushAgain Expression #assign | [ Expression ] #arrIdx #readAddr H | Simple_expression_prime
-24. H -> = #pushAgain Expression #assign | G D C
+22. Expression -> Simple_expression_zegond | #pidAddr @pushType @initialCheckScope ID B
+23. B -> #readAddr = #pushAgain Expression @checkSide #assign | @checkScope [ Expression ] #arrIdx #readAddr H | Simple_expression_prime
+24. H -> = #pushAgain Expression @checkSide #assign | G D C
 25. Simple_expression_zegond -> Additive_expression_zegond C
 26. Simple_expression_prime -> Additive_expression_prime C
-27. C -> Relop Additive_expression #compare | EPSILON
+27. C -> Relop Additive_expression @checkSide #compare | EPSILON
 28. Relop -> < #pushLess | == #pushEq
 29. Additive_expression -> Term D
 30. Additive_expression_prime -> Term_prime D
 31. Additive_expression_zegond -> Term_zegond D
-32. D -> Addop Term #addMinus D | EPSILON
+32. D -> Addop Term @checkSide #addMinus D | EPSILON
 33. Addop -> + #pushPlus | - #pushMinus
 34. Term -> Factor G
 35. Term_prime -> Factor_prime G
 36. Term_zegond -> Factor_zegond G
-37. G -> * Factor #mult G | EPSILON
-38. Factor -> ( Expression ) | #pidAddr ID Var_call_prime | #pushNum NUM 
-39. Var_call_prime -> ( Args ) #jf #pushReturn | Var_prime
-40. Var_prime -> [ Expression ] #arrIdx #readAddr | EPSILON #readAddr
-41. Factor_prime -> ( Args ) #jf #pushReturn | EPSILON
-42. Factor_zegond -> ( Expression ) | #pushNum NUM
+37. G -> * Factor @checkSide #mult G | EPSILON
+38. Factor -> ( Expression ) | #pidAddr @pushType @initialCheckScope ID Var_call_prime | #pushNum @pushType NUM 
+39. Var_call_prime -> @checkScope ( Args ) #jf #pushReturn | Var_prime
+40. Var_prime -> @checkScope [ Expression ] #arrIdx #readAddr | @checkScope EPSILON #readAddr
+41. Factor_prime -> @checkScope ( Args ) #jf #pushReturn | EPSILON
+42. Factor_zegond -> ( Expression ) | #pushNum @pushType NUM
 43. Args -> Arg_list | EPSILON
-44. Arg_list -> #specDataAddrFunc #pushAgain Expression #assign #updateNextArgAddr Arg_list_prime
-45. Arg_list_prime -> , Expression #assign #updateNextArgAddr Arg_list_prime | EPSILON #popAgain
+44. Arg_list -> #specDataAddrFunc #pushAgain @incrementArgCount Expression @checkArgs #assign #updateNextArgAddr Arg_list_prime
+45. Arg_list_prime -> , @incrementArgCount Expression @checkArgs #assign #updateNextArgAddr Arg_list_prime | EPSILON #popAgain @checkArgCountAndReset
