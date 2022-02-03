@@ -1,7 +1,7 @@
 1. Program -> Declaration_list $
 2. Declaration_list -> Declaration Declaration_list | EPSILON
 3. Declaration -> %defAddr %defScope Declaration_initial Declaration_prime
-4. Declaration_initial -> %defType @pushType Type_specifier %defLex ID
+4. Declaration_initial -> %defType @pushType3 Type_specifier %defLex ID
 5. Declaration_prime -> @popType Fun_declaration_prime | Var_declaration_prime @checkVoid
 6. Var_declaration_prime -> %updateAddr1 %args1 %varSpec ; | [ %updateAddr2 %args2 NUM ] %arrSpec ;
 7. Fun_declaration_prime -> %funcSpec %returnAddrVal %codeAddr %updateScopeInc %argsPush ( Params ) %zeroArgs %updateScopeDec Compound_stmt #jumpBack

@@ -748,9 +748,9 @@ def write_semantic_errors():
 
 
 def chk(line, lex):
-    for l, x in overall_errors:
+    """for l, x in overall_errors:
         if line == l and x == lex:
-            return False
+            return False"""
     return True
 
 
@@ -1131,13 +1131,27 @@ def codeGen(action, input):
         else:
             temp = symbTable[findLex(input, curScope)]["Type"]
             temp_2 = symbTable[findLex(input, curScope)]["FuncArrVar"]
-            if temp == 'int' and temp_2 == 'Arr':
+            if findLex(input, curScope) == -1:
+                semanticStack.append('error')
+            elif temp == 'int' and temp_2 == 'Arr':
                 semanticStack.append('array')
             elif temp == 'int*':
                 semanticStack.append('array')
             else:
                 semanticStack.append(temp)
 
+    elif action == '@pushType3':
+        if input.isnumeric():
+            semanticStack.append('int')
+        else:
+            temp = symbTable[findLex(input, curScope)]["Type"]
+            temp_2 = symbTable[findLex(input, curScope)]["FuncArrVar"]
+            if temp == 'int' and temp_2 == 'Arr':
+                semanticStack.append('array')
+            elif temp == 'int*':
+                semanticStack.append('array')
+            else:
+                semanticStack.append(temp)
     elif action == '@pushType2':
         semanticStack[-1] = 'int'
 
@@ -1184,7 +1198,7 @@ def codeGen(action, input):
                     semantic_errors_shdw.pop()
                     overall_errors.pop()
     elif action == '@checkSide':
-        if semanticStack[-1] != semanticStack[-2]:
+        if semanticStack[-1] != 'error' and semanticStack[-2] != 'error' and semanticStack[-1] != semanticStack[-2]:
             if chk(lineCount - 2, "Type mismatch in operands"):
                 semantic_errors.append("#" + str(lineCount - 2) + " : Semantic Error! Type mismatch in operands, Got " + semanticStack[-1] + " instead of " + semanticStack[-2] + ".")
                 semantic_errors_shdw.append(True)
@@ -1211,9 +1225,11 @@ def codeGen(action, input):
             temp_2 = symbTable[getIdxByAddr(stack[-2])]["Type"]
             if lineCount - 2 == 15:
                 print(stack[-2], symbTable[getIdxByAddr(stack[-2])])
-            if symbTable[getIdxByAddr(stack[-2])]["Type"] == 'int*' or symbTable[getIdxByAddr(stack[-2])]["FuncArrVar"] == 'Arr':
+            if getIdxByAddr(stack[-2]) == -1:
+                temp_2 = 'error'
+            elif symbTable[getIdxByAddr(stack[-2])]["Type"] == 'int*' or symbTable[getIdxByAddr(stack[-2])]["FuncArrVar"] == 'Arr':
                 temp_2 = 'array'
-            if semanticStack[-1] != temp_2:
+            if semanticStack[-1] != 'error' and temp_2 != 'error' and semanticStack[-1] != temp_2:
                 if chk(lineCount - 2, str(funcArgsCountStack[-1])):
                     semantic_errors.append("#" + str(lineCount - 2) + " : Semantic Error! Mismatch in type of argument " + str(funcArgsCountStack[-1]) + " of '" + symbTable[getIdxByAddr(stack[-4])]["Lexeme"] + "'. Expected '" + temp_2 + "' but got '" + semanticStack[-1] + "' instead.")
                     semantic_errors_shdw.append(True)
